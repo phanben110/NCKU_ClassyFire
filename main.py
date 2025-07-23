@@ -11,7 +11,7 @@ os.makedirs(destination_dir, exist_ok=True)
 
 # Delay 3 giây
 print("Đang đợi 3 giây trước khi sao chép...")
-time.sleep(4)
+time.sleep(5)
 
 # Sao chép file
 destination_file = os.path.join(destination_dir, os.path.basename(source_file))

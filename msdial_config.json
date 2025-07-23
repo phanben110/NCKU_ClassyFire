@@ -8,13 +8,13 @@
         "UR2_POS1209_WEI_38_01_2086.d",
         "POOL_POS1209_WEI_42_01_2090.d"
     ],
-    "library_path": "C:\\Users\\user\\Desktop\\自動化檔案\\Database",
-    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data",
     "ionization": "Soft ionization",
     "separation": "Chromatography",
     "collision": "CID/HCD",
     "data_ms1": "Centroid data",
     "data_type_msms": "Centroid data",
     "ion": "Positive ion mode",
-    "target_omics": "Metabolomics"
+    "target_omics": "Metabolomics",
+    "library_path": "C:\\Users\\user\\Desktop\\自動化檔案\\Database",
+    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data"
 }
