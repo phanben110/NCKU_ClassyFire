@@ -1,0 +1,20 @@
+{
+    "app_path": "C:\\Users\\user\\Documents\\TMIC\\MSDIAL.v5.5.241113-net48\\MSDIAL.exe",
+    "project_file_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\projects",
+    "folder_analysis_path": "C:\\Users\\user\\Documents\\1209_pos_testUR",
+    "folders_to_select": [
+        "POOL_POS1209_LIU_54_01_2081.d",
+        "QC_40PPB_4_95_01_2091.d",
+        "UR2_POS1209_WEI_38_01_2086.d",
+        "POOL_POS1209_WEI_42_01_2090.d"
+    ],
+    "library_path": "C:\\Users\\user\\Desktop\\自動化檔案\\Database",
+    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data",
+    "ionization": "Soft ionization",
+    "separation": "Chromatography",
+    "collision": "CID/HCD",
+    "data_ms1": "Centroid data",
+    "data_type_msms": "Centroid data",
+    "ion": "Positive ion mode",
+    "target_omics": "Metabolomics"
+}
