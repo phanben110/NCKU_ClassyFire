@@ -120,8 +120,44 @@ def rerun_app():
     """Handle Streamlit rerun for compatibility"""
     st.experimental_rerun()
 
+def display_pipeline_info():
+    """Display information about the pipeline steps"""
+    st.sidebar.markdown("### 🔬 Pipeline Tasks")
+    st.sidebar.markdown("""
+    **Task 1: MS-DIAL Processing**
+    - Run MS-DIAL application (main.py)
+    - Process input data files
+    - Clean and prepare data
+    - Generate initial results in clean_result folder
+    
+    **Task 2: Chemical Structure Classification**
+    
+    **Step 1: Classification Processing**
+    - Process input data files
+    - Apply chemical classification
+    - Generate classification results
+    
+    **Step 2: Data Merging**
+    - Merge classification results with original data
+    - Combine experimental data with classifications
+    - Preserve data integrity
+    
+    **Step 3: Identifier Conversion**
+    - Convert chemical identifiers to multiple formats
+    - Use CTS API for conversions
+    - Add HMDB, KEGG, PubChem CID, ChEBI IDs
+    
+    **Step 4: Final Aggregation**
+    - Aggregate all processed data
+    - Create final analysis-ready dataset
+    - Output MetaboAnalyst compatible format
+    
+    *Steps run automatically in sequence: 1 → 2 → 3 → 4*
+    """)
+
 def main():
     title_app("ClassyFire - Chemical Analysis Pipeline")
+    display_pipeline_info()
     
     # Custom CSS for larger Start Pipeline button and styled progress bar without shadow
     st.markdown("""
