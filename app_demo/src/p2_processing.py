@@ -337,12 +337,27 @@ def main():
                     
                     time.sleep(1)
                 
+                # if st.session_state.process_running:
+                #     st.session_state.process_running = False
+                #     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
+                #     progress_bar.progress(100)  # Full completion
+                #     st.session_state.log_capture.add_log("Pipeline completed successfully")
+                #     break
                 if st.session_state.process_running:
                     st.session_state.process_running = False
                     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
                     progress_bar.progress(100)  # Full completion
                     st.session_state.log_capture.add_log("Pipeline completed successfully")
+
+                    # New message for Step 3
+                    st.markdown(
+                        "<div style='text-align:center; padding:15px; background-color:#D4EDDA; color:#155724; border-radius:8px; font-size:18px;'>"
+                        "🎉 Done! Please go to <b>Step 3</b> to view your results."
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
                     break
+
             
             # Update log display if enabled
             if st.session_state.show_logs:
