@@ -65,7 +65,13 @@ def check_clean_result_files():
         print(f"❌ Folder not found: {source_folder}")
         return False, []
     
-    excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
+    # excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
+    
+    excel_files = [
+        f for f in os.listdir(source_folder)
+        if f.lower().endswith(('.xlsx', '.csv', '.txt'))
+    ]
+    
     file_count = len(excel_files)
 
     log_access(f"Detected {file_count} Excel file(s) in {source_folder}")
