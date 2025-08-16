@@ -8,9 +8,9 @@ import win32con
 import pyautogui
 from pywinauto import Desktop
 import os
+import shutil
 import datetime
 import configs
-
 
 # Close all windows
 pyautogui.hotkey('win', 'd')
@@ -26,7 +26,7 @@ main_window.set_focus()  # focus window
 hwnd_update = win32gui.FindWindow(None, "Update notification")
 if hwnd_update != 0:
     print("A new MS-DIAL is available!")
-    update = main_window.child_window(title="否(N)", auto_id="7", control_type="Button")
+    update = main_window.child_window(title="No", auto_id="7", control_type="Button")
     update.click()
 time.sleep(2)
 
@@ -65,7 +65,7 @@ height = bottom - top
 win32gui.SetWindowPos(hwnd_folder, None, new_left, top, width, height, win32con.SWP_NOZORDER)
 
 # Change folder path having analysis folders
-trys = main_window.child_window(title="所有位置", control_type="SplitButton")
+trys = main_window.child_window(title="All locations", control_type="SplitButton")
 trys.click_input()
 # Paste folder_analysis_path
 folder_analysis_path = configs.folder_analysis_path
@@ -76,7 +76,7 @@ time.sleep(1)
 
 # Sort list display
 #Get list folder displayed on screen
-import_window = main_window.child_window(title="項目檢視", control_type="List")
+import_window = main_window.child_window(title="Items View", control_type="List")
 list_items = import_window.descendants(control_type="ListItem")
 folder_names = [item.window_text() for item in list_items]
 
@@ -89,7 +89,7 @@ time2 = datetime.datetime.fromtimestamp(os.stat(folder_path_n).st_mtime)
 
 #Make screen display the new ones
 if time1 < time2:
-    day_motifiled = main_window.child_window(auto_id="System.DateModified", control_type="SplitButton")
+    day_motifiled = main_window.child_window(title="Date modified", auto_id="System.DateModified", control_type="SplitButton")
     day_motifiled.click_input()
 time.sleep(1)
 
@@ -204,11 +204,11 @@ elif data_ms1 == "Centroid data":
 
 #Data type (MS/MS)
 data_type_msms = main_window.child_window(title='Data type (MS/MS)',control_type="Group")
-data_msms = configs.data_msms
-if data_ms1 == "Profile data":
+data_msms = configs.data_type_msms
+if data_msms == "Profile data":
     profile_data = data_type_msms.child_window(title="Profile data", auto_id="RadioButton_ProfileModeMS2", control_type="RadioButton")
     profile_data.click() 
-elif data_ms1 == "Centroid data":
+elif data_msms == "Centroid data":
     centroid_data = data_type_msms.child_window(title="Centroid data", auto_id="RadioButton_CentroidModeMS2", control_type="RadioButton")
     centroid_data.click() 
 
@@ -305,3 +305,18 @@ add_all.click()
 # Export results
 export_results = list_result_window.child_window(title="Export", control_type="Button")
 export_results.click()
+
+# Copy file
+dest_dir = r"C:\Users\user\Desktop\自動化檔案\data\clean_result"
+os.makedirs(dest_dir, exist_ok=True)
+
+for file_name in os.listdir(result_path):
+    source_file = os.path.join(result_path, file_name)
+    dest_file = os.path.join(dest_dir, file_name)
+
+    if os.path.isfile(source_file):
+        shutil.copy2(source_file, dest_file) 
+
+# Show the main Classify
+classify_window = win32gui.FindWindow(None, "ClassyFire - Google Chrome")
+win32gui.ShowWindow(classify_window, win32con.SW_RESTORE)

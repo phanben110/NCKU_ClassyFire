@@ -97,20 +97,21 @@ class ChemicalClassifier:
         
         # Get all Excel files
         src_files = [f for f in os.listdir(self.config.SOURCE_FOLDER) 
-                    if f.endswith(('.xlsx', '.csv', '.txt'))]
-
+                    if f.endswith(('.xlsx','.csv','.txt'))]
+        
         for file in src_files:
             self._process_single_file(file)
     
     def _process_single_file(self, filename: str):
         """Process a single Excel file for classification"""
         file_path = os.path.join(self.config.SOURCE_FOLDER, filename)
-        df = pd.read_excel(file_path)
-        # df = pd.read_csv(file_path,sep='\t')
-
-        # Filter rows where title is not unknown
+        #df = pd.read_excel(file_path)
+        df = pd.read_csv(file_path, sep = '\t' )
         if 'Title' not in df.columns and 'Name' in df.columns:
             df.rename(columns={'Name': 'Title'}, inplace=True)
+
+        
+        # Filter rows where title is not unknown
         filtered_df = df[df['Title'] != 'Unknown']
         
         # Initialize data containers
@@ -207,9 +208,9 @@ class DataMerger:
         
         for root, dirs, files in os.walk(self.config.GROUPING_FOLDER):
             for file in files:
-                if file.endswith(('.csv', '.xlsx', '.txt')):
+                if file.endswith((".csv",'.xlsx','.txt')):
                     file_path = os.path.join(root, file)
-                    src_df = pd.read_csv(file_path)
+                    src_df = pd.read_csv(file_path, sep=',')
                     
                     for _, row in src_df.iterrows():
                         inchikey = row["inchikey"]
@@ -231,9 +232,9 @@ class DataMerger:
         
         for root, dirs, files in os.walk(self.config.SOURCE_FOLDER):
             for file in files:
-                if file.endswith(('.xlsx', '.csv', '.txt')):
+                if file.endswith((".xlsx",'.csv', '.txt')):
                     file_path = os.path.join(root, file)
-                    target_df = pd.read_excel(file_path)
+                    target_df = pd.read_csv(file_path,sep='\t')
                     
                     # Add Class column
                     target_df["Class"] = None
@@ -251,7 +252,7 @@ class DataMerger:
         """Save merged data to CSV file with timestamp"""
         current_datetime = datetime.datetime.now()
         base_filename = os.path.basename(filename)
-        if base_filename.endswith(('.xlsx', '.csv', '.txt')):
+        if base_filename.endswith((".xlsx",'.csv','.txt')):
             base_filename = base_filename[:-5]
         
         formatted_datetime = current_datetime.strftime("%Y-%m-%d_%H-%M-%S")
@@ -329,8 +330,8 @@ class DataAggregator:
     def aggregate_data(self):
         """Aggregate all converted data into final merged file"""
         csv_files = [f for f in os.listdir(self.config.CONVERT_RESULT_FOLDER) 
-                    if f.endswith((".csv", ".xlsx", ".txt"))]
-
+                    if f.endswith((".csv",".txt"))]
+        
         if not csv_files:
             print("No CSV files found to aggregate")
             return
@@ -347,7 +348,7 @@ class DataAggregator:
             df_input = pd.read_csv(file_path)
             if 'Title' not in df_input.columns and 'Name' in df_input.columns:
                 df_input.rename(columns={'Name': 'Title'}, inplace=True)
-
+            
             column_name = file_name.split('.')[0]
             df_output[column_name] = ''
             

@@ -11,70 +11,11 @@ warnings.filterwarnings("ignore")
 
 # Configure logging
 logging.basicConfig(
-    filename='runtime.log',  # Tên file log
-    level=logging.INFO,     # Mức độ logging
-    format='%(asctime)s - %(message)s',  # Định dạng log
-    datefmt='%Y-%m-%d %H:%M:%S'  # Định dạng thời gian
+    filename='runtime.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
-
-# Function to log access information
-def log_access(message):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"{current_time} - P1. Upload     - {message}")
-    print(f"{current_time} - P1. Upload     - {message}")
-
-# Function to upload and display Excel data
-def upload_data(file_names=None, sample_count=None):
-    log_access("upload data")
-    show_configuration_page() 
-    
-import streamlit as st
-import pandas as pd
-import json
-import os
-import logging
-import warnings
-from datetime import datetime
-
-warnings.filterwarnings("ignore")
-
-# Configure logging
-logging.basicConfig(
-    filename='runtime.log',  # Tên file log
-    level=logging.INFO,     # Mức độ logging
-    format='%(asctime)s - %(message)s',  # Định dạng log
-    datefmt='%Y-%m-%d %H:%M:%S'  # Định dạng thời gian
-)
-
-# Function to log access information
-def log_access(message):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"{current_time} - P1. Upload     - {message}")
-    print(f"{current_time} - P1. Upload     - {message}")
-
-# Function to upload and display Excel data
-def upload_data(file_names=None, sample_count=None):
-    log_access("upload data")
-    show_configuration_page() 
-
-import streamlit as st
-import pandas as pd
-import json
-import os
-import logging
-import warnings
-from datetime import datetime
-
-warnings.filterwarnings("ignore")
-
-# Configure logging
-logging.basicConfig(
-    filename='runtime.log',  # Tên file log
-    level=logging.INFO,     # Mức độ logging
-    format='%(asctime)s - %(message)s',  # Định dạng log
-    datefmt='%Y-%m-%d %H:%M:%S'  # Định dạng thời gian
-)
-
 
 # Function to log access information
 def log_access(message):
@@ -92,7 +33,7 @@ CONFIG_FILE = "msdial_config.json"
 
 # Default configuration
 DEFAULT_CONFIG = {
-    "app_path": r"C:\Users\user\Documents\TMIC\MSDIAL.v5.5.241113-net48\MSDIAL.exe",
+    "app_path": r"C:\Users\user\Downloads\MSDIAL.v5.5.250627-net48\MSDIAL.exe",
     "project_file_path": r"C:\Users\user\Desktop\自動化檔案\data\projects",
     "folder_analysis_path": r"C:\Users\user\Documents\1209_pos_testUR",
     "folders_to_select": [
@@ -109,7 +50,7 @@ DEFAULT_CONFIG = {
     "ion": "Positive ion mode",
     "target_omics": "Metabolomics",
     "library_path": r"C:\Users\user\Desktop\自動化檔案\Database",
-    "result_path": r"C:\Users\user\Desktop\自動化檔案\data"
+    "result_path": r"C:\Users\user\Desktop\自動化檔案\data\NCKU_ClassyFire\data\clean_result"
 }
 
 def load_config():
@@ -138,6 +79,24 @@ def save_config(config_data):
     except Exception as e:
         st.error(f"Error saving configuration: {e}")
         return False
+
+def scan_folder_for_d_files(folder_path):
+    """Scan folder for directories with .d extension"""
+    try:
+        if not os.path.exists(folder_path):
+            return []
+        
+        d_folders = []
+        for item in os.listdir(folder_path):
+            item_path = os.path.join(folder_path, item)
+            # Check if it's a directory and ends with .d
+            if os.path.isdir(item_path) and item.endswith('.d'):
+                d_folders.append(item)
+        
+        return sorted(d_folders)  # Sort alphabetically
+    except Exception as e:
+        st.warning(f"Error scanning folder: {e}")
+        return []
 
 def show_configuration_page():
     """Display the configuration page"""
@@ -201,6 +160,17 @@ def show_configuration_page():
         box-shadow: 0 6px 20px 0 rgba(168, 237, 234, 0.4);
     }
     
+    /* Refresh button */
+    div[data-testid="column"]:nth-child(4) .stButton > button {
+        background: linear-gradient(45deg, #ffecd2 0%, #fcb69f 100%);
+        box-shadow: 0 4px 15px 0 rgba(252, 182, 159, 0.3);
+        color: #333 !important;
+    }
+    
+    div[data-testid="column"]:nth-child(4) .stButton > button:hover {
+        box-shadow: 0 6px 20px 0 rgba(252, 182, 159, 0.4);
+    }
+    
     /* Form styling */
     .stForm {
         border: 2px solid #e0e6ed;
@@ -210,15 +180,13 @@ def show_configuration_page():
     }
     
     .main-header {
-        color: #000000; /* Màu đen */
+        color: #000000;
         font-size: 2.2rem;
         font-weight: 700;
         margin-bottom: 1rem;
         margin-top: 0;
-        text-align: left; /* Không căn giữa */
+        text-align: left;
     }
-
-
     
     /* Section dividers */
     .section-divider {
@@ -228,9 +196,17 @@ def show_configuration_page():
         border-radius: 2px;
         margin: 1.5rem 0;
     }
+    
+    /* Info box styling */
+    .folder-info {
+        background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 5px solid #2196f3;
+    }
     </style>
     """, unsafe_allow_html=True)
-    
     
     # Load existing configuration
     current_config = load_config()
@@ -271,17 +247,33 @@ def show_configuration_page():
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
         st.markdown("### Folder Selection")
         
-        folders_to_select = st.multiselect(
-            "Select folders to analyze",
-            options=[
-                "POOL_POS1209_LIU_54_01_2081.d",
-                "QC_40PPB_4_95_01_2091.d", 
-                "UR2_POS1209_WEI_38_01_2086.d",
-                "POOL_POS1209_WEI_42_01_2090.d"
-            ],
-            default=current_config["folders_to_select"],
-            help="Choose which data folders to include in the analysis"
-        )
+        # Scan for .d folders in the analysis path
+        available_folders = scan_folder_for_d_files(folder_analysis_path)
+        
+        if available_folders:
+            st.markdown(f'<div class="folder-info">📁 Found {len(available_folders)} .d folders in: <code>{folder_analysis_path}</code></div>', 
+                       unsafe_allow_html=True)
+            
+            # Filter current selection to only include folders that still exist
+            current_selection = [folder for folder in current_config["folders_to_select"] 
+                               if folder in available_folders]
+            
+            folders_to_select = st.multiselect(
+                "Select folders to analyze",
+                options=available_folders,
+                default=current_selection,
+                help="Choose which data folders to include in the analysis. Folders are automatically detected from the Analysis Folder Path."
+            )
+            
+            # Show folder count info
+            if folders_to_select:
+                st.success(f"✅ Selected {len(folders_to_select)} out of {len(available_folders)} available folders")
+            else:
+                st.warning("⚠️ No folders selected for analysis")
+        else:
+            st.warning(f"⚠️ No .d folders found in: {folder_analysis_path}")
+            st.info("💡 Please check if the Analysis Folder Path is correct and contains .d directories")
+            folders_to_select = []
         
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
         st.markdown("### MS-DIAL Parameters")
@@ -341,7 +333,7 @@ def show_configuration_page():
         
         # Form submission buttons with beautiful styling
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-        col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
+        col_btn1, col_btn2, col_btn3, col_btn4 = st.columns([2, 1, 1, 1])
         
         with col_btn1:
             submitted = st.form_submit_button(
@@ -358,6 +350,12 @@ def show_configuration_page():
         with col_btn3:
             preview_button = st.form_submit_button(
                 "Preview Config",
+                use_container_width=True
+            )
+            
+        with col_btn4:
+            refresh_button = st.form_submit_button(
+                "Refresh Folders",
                 use_container_width=True
             )
         
@@ -377,15 +375,25 @@ def show_configuration_page():
                 'ion': ion,
                 'target_omics': target_omics
             }
-            save_config(config_data)
+            if save_config(config_data):
+                st.balloons()
         
         if reset_button:
             save_config(DEFAULT_CONFIG)
-            st.experimental_rerun()  # Fixed: Use st.experimental_rerun() instead of st.rerun()
+            try:
+                st.rerun()  # For Streamlit >= 1.27.0
+            except AttributeError:
+                st.experimental_rerun()  # For older versions
             
         if preview_button:
             st.info("Current configuration is shown below in the preview section.")
-    
+            
+        if refresh_button:
+            st.info("Folder list refreshed! Available folders have been updated.")
+            try:
+                st.rerun()  # For Streamlit >= 1.27.0
+            except AttributeError:
+                st.experimental_rerun()  # For older versions
     
     # Beautiful configuration preview
     with st.expander("👁️ Current Configuration Preview", expanded=False):
@@ -401,8 +409,11 @@ def show_configuration_page():
             st.code(f"Analysis: {current_config['folder_analysis_path']}")
             
             st.markdown("**Selected Folders:**")
-            for folder in current_config['folders_to_select']:
-                st.write(f"• {folder}")
+            if current_config['folders_to_select']:
+                for folder in current_config['folders_to_select']:
+                    st.write(f"• {folder}")
+            else:
+                st.write("• No folders selected")
         
         with col2:
             st.markdown("**MS Parameters:**")
@@ -417,7 +428,3 @@ def show_configuration_page():
         # JSON view option
         if st.checkbox("Show raw JSON", key="show_json"):
             st.json(current_config)
-
-# Usage in main app:
-# if page == "Configuration":
-#     show_configuration_page()

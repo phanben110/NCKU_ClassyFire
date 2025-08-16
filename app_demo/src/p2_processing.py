@@ -42,6 +42,7 @@ def clean_result_folders():
             log_access(f"Cleaned {folder} folder")
         os.makedirs(folder, exist_ok=True)
         log_access(f"Created new {folder} folder")
+    print("Clear")
 
 # def check_clean_result_files():
 #     """Check if files exist in data/clean_result folder"""
@@ -51,7 +52,6 @@ def clean_result_folders():
     
 #     excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
 #     return len(excel_files) > 0, excel_files
-
 def check_clean_result_files():
     """Check if files exist in data/clean_result folder"""
     source_folder = "data/clean_result"
@@ -65,13 +65,11 @@ def check_clean_result_files():
         print(f"❌ Folder not found: {source_folder}")
         return False, []
     
-    # excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
-    
+    #excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
     excel_files = [
-        f for f in os.listdir(source_folder)
-        if f.lower().endswith(('.xlsx', '.csv', '.txt'))
+    f for f in os.listdir(source_folder)
+    if f.lower().endswith(('.xlsx', '.csv','.txt'))
     ]
-    
     file_count = len(excel_files)
 
     log_access(f"Detected {file_count} Excel file(s) in {source_folder}")
@@ -79,14 +77,35 @@ def check_clean_result_files():
 
     return file_count > 0, excel_files
 
-import subprocess
+
+# def run_main_script():
+#     """Run the main.py script using subprocess"""
+#     try:
+#         log_access("Starting MS-DIAL main.py script execution")
+#         process = subprocess.Popen(
+#             #["python", "main.py"], #main.py #msdial_new.py
+#             ["python", "msdial_new.py"], #main.py #msdial_new.py
+#             stdout=subprocess.PIPE,
+#             stderr=subprocess.PIPE,
+#             text=True,
+#             bufsize=1,
+#             universal_newlines=True
+#         )
+#         print("code " , process)
+#         return process
+#     except Exception as e:
+#         log_access(f"Error starting main.py: {str(e)}")
+#         return None
+
+
 
 def run_main_script():
     """Run the main.py script using subprocess"""
     try:
         log_access("Starting MS-DIAL main.py script execution")
         subprocess.run(
-            ["python", "main.py"],
+            #["python", "main.py"],
+            ["python","msdial_new.py"],
             check=True,         # nếu main.py trả về lỗi (exit code != 0) sẽ raise Exception
             text=True
         )
@@ -281,7 +300,7 @@ def main():
                 st.markdown("### Real-time Logs")
                 log_placeholder = st.empty()
         
-        max_wait_time = 3600  # 1 hour maximum wait time
+        max_wait_time = 3600*5  # 1 hour maximum wait time
         start_time = time.time()
         
         while st.session_state.process_running:
