@@ -9,3 +9,4 @@ pyper
 openpyxl
 xlsxwriter
 streamlit-custom-notification-box
+pandas
