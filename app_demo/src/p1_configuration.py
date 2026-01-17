@@ -131,7 +131,7 @@ def validate_raw_file_names(base_path, raw_file_names):
             
         folder_name = name 
         base_path_fix = base_path[1:-1] if (base_path.startswith('"') and base_path.endswith('"')) else base_path
-        folder_path = os.path.join(base_path_fix, folder_name)
+        folder_path = os.path.join(base_path_fix, f"{folder_name}.raw")
         print(folder_path)
         print(os.path.exists(folder_path))
         
