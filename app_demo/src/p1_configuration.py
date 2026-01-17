@@ -81,21 +81,31 @@ def save_config(config_data):
 
 def scan_folder_for_d_files(folder_path):
     """Scan folder for directories with .d extension"""
+
+    if not folder_path:
+        return []
+
+    # ✅ Remove leading/trailing quotes safely
+    folder_path_fix = folder_path.strip().strip('"').strip("'")
+
     try:
-        if not os.path.exists(folder_path):
+        if not os.path.exists(folder_path_fix):
             return []
-        
+
         d_folders = []
-        for item in os.listdir(folder_path):
-            item_path = os.path.join(folder_path, item)
+        for item in os.listdir(folder_path_fix):
+            item_path = os.path.join(folder_path_fix, item)
+            print(item_path)
             # Check if it's a directory and ends with .d
-            if os.path.isdir(item_path) and item.endswith('.d'):
+            if os.path.isdir(item_path) and item.lower().endswith('.d'):
                 d_folders.append(item)
-        
-        return sorted(d_folders)  # Sort alphabetically
+                print(f"Found .d folder: {item_path}")
+
+        return sorted(d_folders)
     except Exception as e:
         st.warning(f"Error scanning folder: {e}")
         return []
+
 
 def validate_raw_file_names(base_path, raw_file_names):
     """
@@ -120,9 +130,12 @@ def validate_raw_file_names(base_path, raw_file_names):
             continue
             
         folder_name = name 
-        folder_path = os.path.join(base_path, folder_name)
+        base_path_fix = base_path[1:-1] if (base_path.startswith('"') and base_path.endswith('"')) else base_path
+        folder_path = os.path.join(base_path_fix, folder_name)
+        print(folder_path)
+        print(os.path.exists(folder_path))
         
-        if os.path.exists(folder_path) and os.path.isdir(folder_path):
+        if os.path.exists(folder_path):
             valid_folders.append(folder_name)
         else:
             missing_folders.append(folder_name)
@@ -320,7 +333,7 @@ def show_configuration_page():
         raw_file_input = st.text_area(
             "Folder Names",
             value=current_config.get("raw_file_input", ""),
-            placeholder='Example: "50MeOH_QC_ur-4_wei_20251216", "50MeOH_QC_ur-4_wei_20251216_20251217223054"',
+            placeholder='Example: 50MeOH_QC_ur-4_wei_20251216, 50MeOH_QC_ur-4_wei_20251216_20251217223054',
             help='Enter folder names separated by commas. The .d extension will be added automatically if not present.',
             height=100,
             key="raw_file_input"
@@ -504,50 +517,57 @@ def show_configuration_page():
     
     col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
     
+    folders_to_select = st.session_state.folders_to_select
+    
     if raw_file:
         raw_file_list = st.session_state.folders_to_select
+        folders_to_select = [] 
+        
     else: 
         raw_file_list = []
     
     with col_btn1:
         if st.button("💾 Save Configuration", type="primary", use_container_width=True, key="btn_save"):
-
-            # 1️⃣ Define required fields
+            # Validate required fields
             required_fields = {
-                "App Path": st.session_state.app_path,
-                "Project File Path": st.session_state.project_file_path,
-                "Analysis Folder Path": st.session_state.folder_analysis_path,
-                "Library Path": st.session_state.library_path,
-                "Result Path": st.session_state.result_path,
-                "Ionization": st.session_state.ionization,
-                "Separation": st.session_state.separation,
-                "Collision": st.session_state.collision,
-                "Ion": st.session_state.ion,
-                "Target Omics": st.session_state.target_omics,
+                'app_path': st.session_state.app_path,
+                'project_file_path': st.session_state.project_file_path,
+                'folder_analysis_path': st.session_state.folder_analysis_path,
+                'library_path': st.session_state.library_path,
+                'result_path': st.session_state.result_path,
+                'ionization': st.session_state.ionization,
+                'separation': st.session_state.separation,
+                'collision': st.session_state.collision,
+                'data_ms1': st.session_state.data_ms1,
+                'data_type_msms': st.session_state.data_type_msms,
+                'ion': st.session_state.ion,
+                'target_omics': st.session_state.target_omics,
             }
-
-            # Nếu dùng raw file thì kiểm tra thêm
-            if selection_mode == "Enter Raw File Names":
-                required_fields["Raw Files"] = raw_file_list
-
-            # 2️⃣ Check missing fields
-            missing_fields = [
-                name for name, value in required_fields.items()
-                if value is None or value == "" or value == []
-            ]
-
-            # 3️⃣ Show error or save
-            if missing_fields:
-                st.error(
-                    "❌ Please fill in the following fields before saving:\n\n"
-                    + "\n".join([f"- {field}" for field in missing_fields])
-                )
+            
+            # Check for empty fields
+            empty_fields = []
+            for field_name, field_value in required_fields.items():
+                if not field_value or (isinstance(field_value, str) and field_value.strip() == ""):
+                    empty_fields.append(field_name)
+            
+            # Check folders/files selection
+            if selection_mode == "Select from Available Folders":
+                if not st.session_state.folders_to_select:
+                    empty_fields.append('folders_to_select')
+            else:  # Enter Raw File Names
+                if not raw_file_list and raw_file == True:
+                    empty_fields.append('raw_files_to_select')
+            
+            # If there are empty fields, show error
+            if empty_fields :
+                st.error(f"❌ Please fill in all required fields! Missing: {', '.join(empty_fields)}")
             else:
+                # All fields are filled, proceed to save
                 config_data = {
                     'app_path': st.session_state.app_path,
                     'project_file_path': st.session_state.project_file_path,
                     'folder_analysis_path': st.session_state.folder_analysis_path,
-                    'folders_to_select': st.session_state.folders_to_select,
+                    'folders_to_select': folders_to_select,
                     'raw_files_to_select': raw_file_list,
                     'library_path': st.session_state.library_path,
                     'result_path': st.session_state.result_path,
@@ -560,7 +580,7 @@ def show_configuration_page():
                     'target_omics': st.session_state.target_omics,
                     'use_raw_file': selection_mode == "Enter Raw File Names"
                 }
-
+                
                 if save_config(config_data):
                     st.success("✅ Configuration saved successfully!")
                     st.balloons()
@@ -617,7 +637,7 @@ def show_configuration_page():
                 'app_path': st.session_state.app_path,
                 'project_file_path': st.session_state.project_file_path,
                 'folder_analysis_path': st.session_state.folder_analysis_path,
-                'folders_to_select': st.session_state.folders_to_select,
+                'folders_to_select': folders_to_select,
                 'raw_files_to_select': raw_file_list,
                 'library_path': st.session_state.library_path,
                 'result_path': st.session_state.result_path,
