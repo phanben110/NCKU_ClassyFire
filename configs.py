@@ -1,5 +1,6 @@
 # #App path
-# app_path = r"C:\Users\user\Documents\TMIC\MSDIAL.v5.5.241113-net48\MSDIAL.exe"
+# app_path = r"C:\Users\user\Downloads\MSDIAL.v5.5.250627-net48\MSDIAL.exe"
+
 
 # #Save project file
 # project_file_path = r"C:\Users\user\Desktop\自動化檔案\data\projects"
@@ -25,7 +26,7 @@
 # #Choose libary path
 # library_path = r"C:\Users\user\Desktop\自動化檔案\Database"
 # #Save output
-# result_path = r"C:\Users\user\Desktop\自動化檔案\data"
+# result_path = r"C:\Users\user\Desktop\自動化檔案\data\clean_result"
 
 import json
 
@@ -37,6 +38,7 @@ with open("msdial_config.json", "r", encoding="utf-8") as f:
 app_path = config["app_path"]
 project_file_path = config["project_file_path"]
 folder_analysis_path = config["folder_analysis_path"]
+raw_files_to_select = config["raw_files_to_select"]
 folders_to_select = config["folders_to_select"]
 
 ionization = config["ionization"]
@@ -49,6 +51,7 @@ target_omics = config["target_omics"]
 
 library_path = config["library_path"]
 result_path = config["result_path"]
+# backup_path = config["backup_path"]
 
 # Optional: print to check values
 print("App Path:", app_path)

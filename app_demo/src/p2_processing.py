@@ -42,32 +42,83 @@ def clean_result_folders():
             log_access(f"Cleaned {folder} folder")
         os.makedirs(folder, exist_ok=True)
         log_access(f"Created new {folder} folder")
+    print("Clear")
 
+# def check_clean_result_files():
+#     """Check if files exist in data/clean_result folder"""
+#     source_folder = "data/clean_result"
+#     if not os.path.exists(source_folder):
+#         return False, []
+    
+#     excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
+#     return len(excel_files) > 0, excel_files
 def check_clean_result_files():
     """Check if files exist in data/clean_result folder"""
     source_folder = "data/clean_result"
+    
+    log_access("Waiting 5 seconds before checking clean_result files...")
+    print("⏳ Waiting 5 seconds before checking files...")
+    time.sleep(5)  # Delay 5 giây
+
     if not os.path.exists(source_folder):
+        log_access(f"Folder not found: {source_folder}")
+        print(f"❌ Folder not found: {source_folder}")
         return False, []
     
-    excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
-    return len(excel_files) > 0, excel_files
+    #excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
+    excel_files = [
+    f for f in os.listdir(source_folder)
+    if f.lower().endswith(('.xlsx', '.csv','.txt'))
+    ]
+    file_count = len(excel_files)
+
+    log_access(f"Detected {file_count} Excel file(s) in {source_folder}")
+    print(f"📂 Detected {file_count} Excel file(s) in '{source_folder}'")
+
+    return file_count > 0, excel_files
+
+
+# def run_main_script():
+#     """Run the main.py script using subprocess"""
+#     try:
+#         log_access("Starting MS-DIAL main.py script execution")
+#         process = subprocess.Popen(
+#             #["python", "main.py"], #main.py #msdial_new.py
+#             ["python", "msdial_new.py"], #main.py #msdial_new.py
+#             stdout=subprocess.PIPE,
+#             stderr=subprocess.PIPE,
+#             text=True,
+#             bufsize=1,
+#             universal_newlines=True
+#         )
+#         print("code " , process)
+#         return process
+#     except Exception as e:
+#         log_access(f"Error starting main.py: {str(e)}")
+#         return None
+
+
 
 def run_main_script():
     """Run the main.py script using subprocess"""
     try:
         log_access("Starting MS-DIAL main.py script execution")
-        process = subprocess.Popen(
-            ["python", "main.py"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            universal_newlines=True
+        subprocess.run(
+            #["python", "main.py"],
+            ["python","msdial_new.py"],
+            check=True,         # nếu main.py trả về lỗi (exit code != 0) sẽ raise Exception
+            text=True
         )
-        return process
+        return True  # Chạy xong thì trả về True
+    except subprocess.CalledProcessError as e:
+        log_access(f"main.py exited with error code {e.returncode}")
+        print(f"main.py exited with error code {e.returncode}")
+        return False
     except Exception as e:
         log_access(f"Error starting main.py: {str(e)}")
-        return None
+        print(f"Error starting main.py: {str(e)}")
+        return False
+
 
 class LogCapture:
     def __init__(self):
@@ -201,7 +252,7 @@ def main():
     if 'task1_completed' not in st.session_state:
         st.session_state.task1_completed = False
     if 'main_process' not in st.session_state:
-        st.session_state.main_process = None
+        st.session_state.main_process = False
     if 'log_capture' not in st.session_state:
         st.session_state.log_capture = LogCapture()
     if 'log_counter' not in st.session_state:
@@ -249,7 +300,7 @@ def main():
                 st.markdown("### Real-time Logs")
                 log_placeholder = st.empty()
         
-        max_wait_time = 3600  # 1 hour maximum wait time
+        max_wait_time = 3600*5  # 1 hour maximum wait time
         start_time = time.time()
         
         while st.session_state.process_running:
@@ -259,31 +310,32 @@ def main():
             if current_time - start_time > max_wait_time:
                 st.error("Process timeout - stopping pipeline")
                 st.session_state.log_capture.add_log("ERROR: Process timeout - stopping pipeline")
-                if st.session_state.main_process:
-                    st.session_state.main_process.terminate()
+                start_time = time.time()
+                # if st.session_state.main_process:
+                #     st.session_state.main_process.terminate()
                 st.session_state.process_running = False
                 break
             
             # Task 1: MS-DIAL Processing
+            has_files, files = check_clean_result_files()
             if not st.session_state.task1_completed:
                 if st.session_state.main_process:
-                    poll_result = st.session_state.main_process.poll()
-                    if poll_result is not None:
-                        if poll_result == 0:
-                            log_msg = "Task 1: MS-DIAL main script completed successfully"
-                            log_access(log_msg)
-                            st.session_state.log_capture.add_log(log_msg)
-                        else:
-                            log_msg = f"Task 1: MS-DIAL main script failed with return code: {poll_result}"
-                            log_access(log_msg)
-                            st.session_state.log_capture.add_log(f"ERROR: {log_msg}")
-                            st.error(f"Task 1 failed with error code: {poll_result}")
-                            st.session_state.process_running = False
-                            break
+                    poll_result = st.session_state.main_process
+                    if has_files:
+                        log_msg = "Task 1: MS-DIAL main script completed successfully"
+                        log_access(log_msg)
+                        st.session_state.log_capture.add_log(log_msg)
+                    # else:
+                    #     log_msg = f"Task 1: MS-DIAL main script failed with return code: {poll_result}"
+                    #     log_access(log_msg)
+                    #     st.session_state.log_capture.add_log(f"ERROR: {log_msg}")
+                    #     st.error(f"Task 1 failed with error code: {poll_result}")
+                    #     st.session_state.process_running = False
+                    #     break
                         
                         st.session_state.main_process = None
                 
-                has_files, files = check_clean_result_files()
+                # has_files, files = check_clean_result_files()
                 if has_files:
                     st.session_state.task1_completed = True
                     log_msg = f"Task 1 completed: Files detected in clean_result folder: {len(files)} files"
@@ -337,12 +389,27 @@ def main():
                     
                     time.sleep(1)
                 
+                # if st.session_state.process_running:
+                #     st.session_state.process_running = False
+                #     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
+                #     progress_bar.progress(100)  # Full completion
+                #     st.session_state.log_capture.add_log("Pipeline completed successfully")
+                #     break
                 if st.session_state.process_running:
                     st.session_state.process_running = False
                     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
                     progress_bar.progress(100)  # Full completion
                     st.session_state.log_capture.add_log("Pipeline completed successfully")
+
+                    # New message for Step 3
+                    st.markdown(
+                        "<div style='text-align:center; padding:15px; background-color:#D4EDDA; color:#155724; border-radius:8px; font-size:18px;'>"
+                        "🎉 Done! Please go to <b>Step 3</b> to view your results."
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
                     break
+
             
             # Update log display if enabled
             if st.session_state.show_logs:

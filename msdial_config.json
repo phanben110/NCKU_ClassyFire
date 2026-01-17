@@ -1,20 +1,17 @@
 {
-    "app_path": "C:\\Users\\user\\Documents\\TMIC\\MSDIAL.v5.5.241113-net48\\MSDIAL.exe",
-    "project_file_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\projects",
-    "folder_analysis_path": "C:\\Users\\user\\Documents\\1209_pos_testUR",
-    "folders_to_select": [
-        "POOL_POS1209_LIU_54_01_2081.d",
-        "QC_40PPB_4_95_01_2091.d",
-        "UR2_POS1209_WEI_38_01_2086.d",
-        "POOL_POS1209_WEI_42_01_2090.d"
-    ],
+    "app_path": "\"C:\\Users\\user\\Downloads\\MSDIAL.v5.5.251021-net48\\MSDIAL.exe\"",
+    "project_file_path": "C:\\Users\\user\\Documents\\代謝體\\上機後原始data\\test",
+    "folder_analysis_path": "\"C:\\Users\\user\\Documents\\代謝體\\上機後原始data\\家安\\尿液\\Metabolite_ur_1-5_wei_20251216\"",
+    "d_type": "",
+    "folders_to_select": [],
+    "raw_files_to_select": ["50MeOH_QC_ur-4_wei_20251216", "50MeOH_QC_ur-4_wei_20251216_20251217223054", "50MeOH_QC_ur-5_wei_20251216"],
+    "library_path": "C:\\Users\\user\\Desktop\\自動化檔案\\Database\\Pos_bank_唯礽.msp",
+    "result_path": "\"C:\\Users\\user\\Documents\\代謝體\\上機後原始data\\家安\\尿液\\WEI_test result\"",
     "ionization": "Soft ionization",
     "separation": "Chromatography",
     "collision": "CID/HCD",
     "data_ms1": "Centroid data",
     "data_type_msms": "Centroid data",
     "ion": "Positive ion mode",
-    "target_omics": "Metabolomics",
-    "library_path": "C:\\Users\\user\\Desktop\\自動化檔案\\Database",
-    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data"
+    "target_omics": "Metabolomics"
 }

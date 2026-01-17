@@ -8,15 +8,16 @@ import win32con
 import pyautogui
 from pywinauto import Desktop
 import os
+import shutil
 import datetime
 import configs
-
 
 # Close all windows
 pyautogui.hotkey('win', 'd')
 
+app_path = configs.app_path
 # Open MS-DIAL
-app = Application(backend="uia").start(configs.app_path)
+app = Application(backend="uia").start(app_path.strip('"'))
 
 # Connect app
 main_window = app.window(title="MSDIAL")  
@@ -26,7 +27,7 @@ main_window.set_focus()  # focus window
 hwnd_update = win32gui.FindWindow(None, "Update notification")
 if hwnd_update != 0:
     print("A new MS-DIAL is available!")
-    update = main_window.child_window(title="否(N)", auto_id="7", control_type="Button")
+    update = main_window.child_window(title="No", auto_id="7", control_type="Button")
     update.click()
 time.sleep(2)
 
@@ -65,84 +66,104 @@ height = bottom - top
 win32gui.SetWindowPos(hwnd_folder, None, new_left, top, width, height, win32con.SWP_NOZORDER)
 
 # Change folder path having analysis folders
-trys = main_window.child_window(title="所有位置", control_type="SplitButton")
+trys = main_window.child_window(title="All locations", control_type="SplitButton")
 trys.click_input()
 # Paste folder_analysis_path
 folder_analysis_path = configs.folder_analysis_path
-pyperclip.copy(folder_analysis_path)
+pyperclip.copy(folder_analysis_path.strip('"'))
 send_keys("^v")
 send_keys("{ENTER}")
 time.sleep(1)
 
-# Sort list display
-#Get list folder displayed on screen
-import_window = main_window.child_window(title="項目檢視", control_type="List")
-list_items = import_window.descendants(control_type="ListItem")
-folder_names = [item.window_text() for item in list_items]
+#Handle input type
+raw_input = True
+if raw_input:
+    #Handle .raw file
+    files_raw = [
+        f if f.lower().endswith(".raw") else f"{f}.raw"
+        for f in configs.raw_files_to_select
+    ]
+    # Transfer to: "..." "..." "..."
+    files_str = " ".join(f'"{f}"' for f in files_raw)
 
-# Compare time
-folder_path_1 = folder_analysis_path +  rf"\{folder_names[0]}"
-folder_path_n = folder_analysis_path +  rf"\{folder_names[-1]}"
+    file_name_edit = main_window.child_window(
+        title="File name:",
+        auto_id="1148",
+        control_type="Edit"
+    )
+    file_name_edit.set_text(files_str)
+    time.sleep(1)
+    send_keys("{ENTER}")
+else:
+    # Sort list display
+    #Get list folder displayed on screen
+    import_window = main_window.child_window(title="Items View", control_type="List")
+    list_items = import_window.descendants(control_type="ListItem")
+    folder_names = [item.window_text() for item in list_items]
 
-time1 = datetime.datetime.fromtimestamp(os.stat(folder_path_1).st_mtime)
-time2 = datetime.datetime.fromtimestamp(os.stat(folder_path_n).st_mtime)
+    # Compare time
+    folder_path_1 = folder_analysis_path +  rf"\{folder_names[0]}"
+    folder_path_n = folder_analysis_path +  rf"\{folder_names[-1]}"
 
-#Make screen display the new ones
-if time1 < time2:
-    day_motifiled = main_window.child_window(auto_id="System.DateModified", control_type="SplitButton")
-    day_motifiled.click_input()
-time.sleep(1)
+    time1 = datetime.datetime.fromtimestamp(os.stat(folder_path_1).st_mtime)
+    time2 = datetime.datetime.fromtimestamp(os.stat(folder_path_n).st_mtime)
 
-# Lấy tọa độ trung tâm của vùng cuộn
-rect = import_window.rectangle()
-center_x = rect.left + (rect.width() // 2)
-center_y = rect.top + (rect.height() // 2)
+    #Make screen display the new ones
+    if time1 < time2:
+        day_motifiled = main_window.child_window(title="Date modified", auto_id="System.DateModified", control_type="SplitButton")
+        day_motifiled.click_input()
+    time.sleep(1)
 
-# Cuộn lên trên (số bước cuộn có thể điều chỉnh)
-mouse.scroll(coords=(center_x, center_y), wheel_dist=1000)
+    # Lấy tọa độ trung tâm của vùng cuộn
+    rect = import_window.rectangle()
+    center_x = rect.left + (rect.width() // 2)
+    center_y = rect.top + (rect.height() // 2)
 
-# Select analysis folders
-folders_to_select = configs.folders_to_select
+    # Cuộn lên trên (số bước cuộn có thể điều chỉnh)
+    mouse.scroll(coords=(center_x, center_y), wheel_dist=1000)
 
-pyautogui.keyDown('ctrl')
-for i in range(len(folders_to_select)-1):
-    #Detect folders
+    # Select analysis folders
+    folders_to_select = configs.folders_to_select
+
+    pyautogui.keyDown('ctrl')
+    for i in range(len(folders_to_select)-1):
+        #Detect folders
+        try:
+            folder = main_window.child_window(title=folders_to_select[i], control_type="ListItem")
+            folder_rect = folder.rectangle()
+        except:
+            print(f"Error: Can not find {folders_to_select[i]}")
+            raise SystemExit
+
+        x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
+        y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
+
+        pyautogui.click(x, y)
     try:
-        folder = main_window.child_window(title=folders_to_select[i], control_type="ListItem")
+        folder = main_window.child_window(title=folders_to_select[-1], control_type="ListItem")
         folder_rect = folder.rectangle()
     except:
-        print(f"Error: Can not find {folders_to_select[i]}")
+        print(f"Error: Can not find {folders_to_select[-1]}")
         raise SystemExit
 
-    x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
-    y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
+    start_x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
+    start_y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
 
-    pyautogui.click(x, y)
-try:
-    folder = main_window.child_window(title=folders_to_select[-1], control_type="ListItem")
-    folder_rect = folder.rectangle()
-except:
-    print(f"Error: Can not find {folders_to_select[-1]}")
-    raise SystemExit
+    # Setting zone
+    center_x = new_left - 30 
+    center_y = (top - bottom) // 2 +  bottom
+    end_x, end_y = center_x, center_y  # Target
 
-start_x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
-start_y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
+    #Add analyis folders
+    pyautogui.moveTo(start_x, start_y)
+    pyautogui.mouseDown()
+    pyautogui.moveTo(end_x, end_y, duration=0.2)
+    pyautogui.mouseUp()
+    pyautogui.keyUp('ctrl')
 
-# Setting zone
-center_x = new_left - 30 
-center_y = (top - bottom) // 2 +  bottom
-end_x, end_y = center_x, center_y  # Target
-
-#Add analyis folders
-pyautogui.moveTo(start_x, start_y)
-pyautogui.mouseDown()
-pyautogui.moveTo(end_x, end_y, duration=0.2)
-pyautogui.mouseUp()
-pyautogui.keyUp('ctrl')
-
-# Close Import analysis files window
-folder_window = main_window.child_window(title="Import analysis files", control_type="Window")
-folder_window.close()
+    # Close Import analysis files window
+    folder_window = main_window.child_window(title="Import analysis files", control_type="Window")
+    folder_window.close()
 
 # Click "Next"
 next_path = main_window.child_window(title="Next", control_type = "Text")  # Tìm ô nhập liệu
@@ -204,11 +225,11 @@ elif data_ms1 == "Centroid data":
 
 #Data type (MS/MS)
 data_type_msms = main_window.child_window(title='Data type (MS/MS)',control_type="Group")
-data_msms = configs.data_msms
-if data_ms1 == "Profile data":
+data_msms = configs.data_type_msms
+if data_msms == "Profile data":
     profile_data = data_type_msms.child_window(title="Profile data", auto_id="RadioButton_ProfileModeMS2", control_type="RadioButton")
     profile_data.click() 
-elif data_ms1 == "Centroid data":
+elif data_msms == "Centroid data":
     centroid_data = data_type_msms.child_window(title="Centroid data", auto_id="RadioButton_CentroidModeMS2", control_type="RadioButton")
     centroid_data.click() 
 
@@ -267,7 +288,7 @@ time.sleep(30)
 #Detech window:
 #ERROR window: Error parsing file
 #Data window: Analysis sucessful
-window_title = "Dataset: " + folder_analysis_path
+window_title = "Dataset: " + folder_analysis_path.strip('"')
 analysis_window = 0
 error_window = 0
 
@@ -282,10 +303,15 @@ while analysis_window == 0 and analysis_window == 0:
 # Detect Data window
 app = Desktop(backend="uia")  # Sử dụng backend "uia" cho giao diện người dùng
 result_window = app.window(title=window_title)
+time.sleep(3)
 
-# Click Export option
 export = result_window.child_window(title="Export", control_type="TabItem")
-export.click_input()
+while True:
+    try:
+        export.click_input()
+        break 
+    except Exception as e:
+        time.sleep(5) 
 
 # Click Peak list result
 list_result = export.child_window(title="Peak list result", control_type="Button")
@@ -296,7 +322,7 @@ list_result_window = result_window.child_window(title="Peak list export", contro
 # Save the result path
 result_path = configs.result_path
 input_box = list_result_window.descendants(control_type="Edit")[0]
-input_box.set_text(result_path)
+input_box.set_text(result_path.strip('"'))
 
 # Add results
 add_all = list_result_window.child_window(title="Add all >>", control_type="Button")
@@ -305,3 +331,18 @@ add_all.click()
 # Export results
 export_results = list_result_window.child_window(title="Export", control_type="Button")
 export_results.click()
+
+# # Copy file
+# dest_dir = r"C:\Users\user\Desktop\自動化檔案\data\clean_result"
+# os.makedirs(dest_dir, exist_ok=True)
+
+# for file_name in os.listdir(result_path):
+#     source_file = os.path.join(result_path, file_name)
+#     dest_file = os.path.join(dest_dir, file_name)
+
+#     if os.path.isfile(source_file):
+#         shutil.copy2(source_file, dest_file) 
+
+# Show the main Classify
+classify_window = win32gui.FindWindow(None, "ClassyFire - Google Chrome")
+win32gui.ShowWindow(classify_window, win32con.SW_RESTORE)
