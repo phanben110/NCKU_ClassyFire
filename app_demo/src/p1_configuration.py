@@ -36,12 +36,6 @@ DEFAULT_CONFIG = {
     "app_path": r"C:\Users\user\Downloads\MSDIAL.v5.5.250627-net48\MSDIAL.exe",
     "project_file_path": r"C:\Users\user\Desktop\自動化檔案\data\projects",
     "folder_analysis_path": r"C:\Users\user\Documents\1209_pos_testUR",
-    "folders_to_select": [
-        "POOL_POS1209_LIU_54_01_2081.d",
-        "QC_40PPB_4_95_01_2091.d", 
-        "UR2_POS1209_WEI_38_01_2086.d",
-        "POOL_POS1209_WEI_42_01_2090.d"
-    ],
     "ionization": "Soft ionization",
     "separation": "Chromatography",
     "collision": "CID/HCD", 
@@ -50,7 +44,9 @@ DEFAULT_CONFIG = {
     "ion": "Positive ion mode",
     "target_omics": "Metabolomics",
     "library_path": r"C:\Users\user\Desktop\自動化檔案\Database",
-    "result_path": r"C:\Users\user\Desktop\自動化檔案\data\NCKU_ClassyFire\data\clean_result"
+    "load_parameter_path": r"D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
+    "accu_mass_ms1": 0.05,
+    "accu_mass_ms2": 0.01
 }
 
 def load_config():
@@ -240,8 +236,8 @@ def show_configuration_page():
         st.session_state.folder_analysis_path = current_config["folder_analysis_path"]
     if 'library_path' not in st.session_state:
         st.session_state.library_path = current_config["library_path"]
-    if 'result_path' not in st.session_state:
-        st.session_state.result_path = current_config["result_path"]
+    if 'load_parameter_path' not in st.session_state:
+        st.session_state.load_parameter_path = current_config["load_parameter_path"]
     if 'folders_to_select' not in st.session_state:
         st.session_state.folders_to_select = current_config.get("folders_to_select", [])
     if 'validation_message' not in st.session_state:
@@ -262,6 +258,14 @@ def show_configuration_page():
         st.session_state.ion = current_config["ion"]
     if 'target_omics' not in st.session_state:
         st.session_state.target_omics = current_config["target_omics"]
+    if 'accu_mass_ms1' not in st.session_state:
+        st.session_state.accu_mass_ms1 = current_config.get("accu_mass_ms1", 0.05)
+    if 'accu_mass_ms2' not in st.session_state:
+        st.session_state.accu_mass_ms2 = current_config.get("accu_mass_ms2", 0.01)
+    if 'available_raw_files' not in st.session_state:
+        st.session_state.available_raw_files = []
+    if 'selected_raw_files' not in st.session_state:
+        st.session_state.selected_raw_files = current_config.get("raw_files_to_select", [])
 
     # ==================== SECTION 1: APPLICATION PATHS ====================
     # st.markdown('<div class="section-container">', unsafe_allow_html=True)
@@ -283,14 +287,6 @@ def show_configuration_page():
     )
     st.session_state.project_file_path = project_file_path
     
-    folder_analysis_path = st.text_input(
-        "Analysis Folder Path",
-        value=st.session_state.folder_analysis_path,
-        help="Path to the folder containing data files to analyze",
-        key="input_analysis_path"
-    )
-    st.session_state.folder_analysis_path = folder_analysis_path
-    
     library_path = st.text_input(
         "Library Path",
         value=st.session_state.library_path,
@@ -299,13 +295,13 @@ def show_configuration_page():
     )
     st.session_state.library_path = library_path
     
-    result_path = st.text_input(
+    load_parameter_path = st.text_input(
         "Result Output Path",
-        value=st.session_state.result_path,
+        value=st.session_state.load_parameter_path,
         help="Directory where analysis results will be saved",
-        key="input_result_path"
+        key="input_load_parameter_path"
     )
-    st.session_state.result_path = result_path
+    st.session_state.load_parameter_path = load_parameter_path
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -314,128 +310,67 @@ def show_configuration_page():
     # st.markdown('<div class="section-container">', unsafe_allow_html=True)
     st.markdown('<div class="section-header">📂 Folder Selection</div>', unsafe_allow_html=True)
 
-    # Dropdown để chọn mode
-    selection_mode = st.selectbox(
-        "Selection Method",
-        options=["Select from Folder", "Enter Raw File Names"],
-        index=0 if not current_config.get("use_raw_file", False) else 1,
-        help="Choose how you want to select folders for analysis",
-        key="selection_mode"
+    folder_analysis_path = st.text_input(
+        "Analysis Folder Path",
+        value=st.session_state.folder_analysis_path,
+        help="Path to the folder containing data files to analyze",
+        key="input_analysis_path"
     )
+    st.session_state.folder_analysis_path = folder_analysis_path
 
+    # Only Enter Raw File Names option
+    selection_mode = "Enter Raw File Names"
+    raw_file = True
     # st.markdown("---")
-    
-    raw_file = False
 
-    if selection_mode == "Enter Raw File Names":
-        # Raw file input mode
-        raw_file = True
-        raw_file_input = st.text_area(
-            "Files Name",
-            value=current_config.get("raw_file_input", ""),
-            placeholder='Example: 50MeOH_QC_ur-4_wei_20251216, 50MeOH_QC_ur-4_wei_20251216_20251217223054',
-            help='Enter folder names separated by commas. The .d extension will be added automatically if not present.',
-            height=100,
-            key="raw_file_input"
-        )
-        
-        load_button = st.button("🔍 Load & Validate", type="primary", use_container_width=True, key="btn_load_validate")
+    # Scan for raw files
+    scan_button = st.button("🔍 Scan for Raw Files", type="primary", use_container_width=True, key="btn_scan_raw")
 
-        
-        # Process when button clicked
-        if load_button:
-            if raw_file_input.strip():
-                raw_file_list = [name.strip() for name in raw_file_input.split(',') if name.strip()]
-                
-                if raw_file_list:
-                    is_valid, folders_to_select, message = validate_raw_file_names(
-                        st.session_state.folder_analysis_path, 
-                        raw_file_list
-                    )
-                    
-                    st.session_state.folders_to_select = folders_to_select
-                    st.session_state.validation_message = message
-                    
-                    if is_valid:
-                        st.session_state.validation_type = 'success'
-                    elif folders_to_select:
-                        st.session_state.validation_type = 'warning'
-                    else:
-                        st.session_state.validation_type = 'error'
-                else:
-                    st.session_state.validation_message = "⚠️ Please enter at least one folder name"
-                    st.session_state.validation_type = 'warning'
-                    st.session_state.folders_to_select = []
+    if scan_button or st.session_state.available_raw_files:
+        if scan_button:
+            if st.session_state.folder_analysis_path:
+                try:
+                    available = []
+                    for item in os.listdir(st.session_state.folder_analysis_path):
+                        item_path = os.path.join(st.session_state.folder_analysis_path, item)
+                        if os.path.isdir(item_path):
+                            available.append(item)
+                    st.session_state.available_raw_files = sorted(available)
+                except Exception as e:
+                    st.warning(f"Error scanning folder: {e}")
+                    st.session_state.available_raw_files = []
             else:
-                st.session_state.validation_message = "⚠️ Please enter folder names"
-                st.session_state.validation_type = 'warning'
-                st.session_state.folders_to_select = []
+                st.warning("⚠️ Please set the Analysis Folder Path first")
+                st.session_state.available_raw_files = []
         
-        # Display validation results
-        if st.session_state.validation_message:
-            if st.session_state.validation_type == 'success':
-                st.success(st.session_state.validation_message)
-            elif st.session_state.validation_type == 'warning':
-                st.warning(st.session_state.validation_message)
-            elif st.session_state.validation_type == 'error':
-                st.error(st.session_state.validation_message)
+        available = st.session_state.available_raw_files
+        
+        if available:
+            st.markdown(f'<div class="folder-info">📁 Found {len(available)} raw folders in: <code>{st.session_state.folder_analysis_path}</code></div>', 
+                    unsafe_allow_html=True)
             
-            # Show validated folders
-            if st.session_state.folders_to_select:
-                with st.expander("📂 Validated Folders", expanded=True):
-                    for idx, folder in enumerate(st.session_state.folders_to_select, 1):
+            selected_raw_files = st.multiselect(
+                "Select Raw Files",
+                options=available,
+                default=st.session_state.selected_raw_files,
+                help="Choose which raw data folders to include in the analysis.",
+                key="multiselect_raw_files"
+            )
+            
+            st.session_state.selected_raw_files = selected_raw_files
+            
+            if selected_raw_files:
+                st.success(f"✅ Selected {len(selected_raw_files)} out of {len(available)} available folders")
+                
+                with st.expander("📂 Selected Folders", expanded=False):
+                    for idx, folder in enumerate(selected_raw_files, 1):
                         st.markdown(f"`{idx}.` **{folder}**")
-                    st.markdown(f"**Total: {len(st.session_state.folders_to_select)} folders**")
-
-    else:
-
-
-        scan_button = st.button("🔍 Scan Folders", type="primary", use_container_width=True, key="btn_scan")
-
-        
-        # Scan for folders when button clicked or if already scanned
-        if scan_button or 'available_folders' in st.session_state:
-            if scan_button:
-                available_folders = scan_folder_for_d_files(st.session_state.folder_analysis_path)
-                st.session_state.available_folders = available_folders
             else:
-                available_folders = st.session_state.get('available_folders', [])
-            
-            if available_folders:
-                st.markdown(f'<div class="folder-info">📁 Found {len(available_folders)} .d folders in: <code>{st.session_state.folder_analysis_path}</code></div>', 
-                        unsafe_allow_html=True)
-                
-                # Filter current selection to only include folders that still exist
-                current_selection = [folder for folder in st.session_state.folders_to_select 
-                                if folder in available_folders]
-                
-                folders_to_select = st.multiselect(
-                    "Select folders to analyze",
-                    options=available_folders,
-                    default=current_selection,
-                    help="Choose which data folders to include in the analysis.",
-                    key="multiselect_folders"
-                )
-                
-                # Update session state
-                st.session_state.folders_to_select = folders_to_select
-                
-                # Show folder count info
-                if folders_to_select:
-                    st.success(f"✅ Selected {len(folders_to_select)} out of {len(available_folders)} available folders")
-                    
-                    with st.expander("📂 Selected Folders", expanded=False):
-                        for idx, folder in enumerate(folders_to_select, 1):
-                            st.markdown(f"`{idx}.` **{folder}**")
-                else:
-                    st.warning("⚠️ No folders selected for analysis")
-            else:
-                st.warning(f"⚠️ No .d folders found in: {st.session_state.folder_analysis_path}")
-                st.info("💡 Please check if the Analysis Folder Path is correct and contains .d directories")
-                st.session_state.folders_to_select = []
-        # else:
-        #     st.info("💡 Click 'Scan Folders' to detect available .d folders")
-    
+                st.warning("⚠️ No folders selected for analysis")
+        else:
+            st.warning(f"⚠️ No raw folders found in: {st.session_state.folder_analysis_path}")
+            st.info("💡 Please check if the Analysis Folder Path is correct and contains raw data folders")
+
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ==================== SECTION 3: MS-DIAL PARAMETERS ====================
@@ -509,6 +444,26 @@ def show_configuration_page():
             key="select_ion"
         )
         st.session_state.ion = ion
+        
+        accu_mass_ms1 = st.number_input(
+            "Accurate mass tolerance (MS1)",
+            value=st.session_state.accu_mass_ms1,
+            min_value=0.0,
+            step=0.01,
+            help="Accurate mass tolerance for MS1 in Da",
+            key="input_accu_mass_ms1"
+        )
+        st.session_state.accu_mass_ms1 = accu_mass_ms1
+        
+        accu_mass_ms2 = st.number_input(
+            "Accurate mass tolerance (MS2)",
+            value=st.session_state.accu_mass_ms2,
+            min_value=0.0,
+            step=0.01,
+            help="Accurate mass tolerance for MS2 in Da",
+            key="input_accu_mass_ms2"
+        )
+        st.session_state.accu_mass_ms2 = accu_mass_ms2
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -517,14 +472,8 @@ def show_configuration_page():
     
     col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
     
-    folders_to_select = st.session_state.folders_to_select
-    
-    if raw_file:
-        raw_file_list = st.session_state.folders_to_select
-        folders_to_select = [] 
-        
-    else: 
-        raw_file_list = []
+    folders_to_select = []
+    raw_file_list = st.session_state.selected_raw_files
     
     with col_btn1:
         if st.button("💾 Save Configuration", type="primary", use_container_width=True, key="btn_save"):
@@ -534,7 +483,7 @@ def show_configuration_page():
                 'project_file_path': st.session_state.project_file_path,
                 'folder_analysis_path': st.session_state.folder_analysis_path,
                 'library_path': st.session_state.library_path,
-                'result_path': st.session_state.result_path,
+                'load_parameter_path': st.session_state.load_parameter_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,
@@ -550,13 +499,9 @@ def show_configuration_page():
                 if not field_value or (isinstance(field_value, str) and field_value.strip() == ""):
                     empty_fields.append(field_name)
             
-            # Check folders/files selection
-            if selection_mode == "Select from Available Folders":
-                if not st.session_state.folders_to_select:
-                    empty_fields.append('folders_to_select')
-            else:  # Enter Raw File Names
-                if not raw_file_list and raw_file == True:
-                    empty_fields.append('raw_files_to_select')
+            # Check raw files selection
+            if not raw_file_list:
+                empty_fields.append('raw_files_to_select')
             
             # If there are empty fields, show error
             if empty_fields :
@@ -570,7 +515,7 @@ def show_configuration_page():
                     'folders_to_select': folders_to_select,
                     'raw_files_to_select': raw_file_list,
                     'library_path': st.session_state.library_path,
-                    'result_path': st.session_state.result_path,
+                    'load_parameter_path': st.session_state.load_parameter_path,
                     'ionization': st.session_state.ionization,
                     'separation': st.session_state.separation,
                     'collision': st.session_state.collision,
@@ -578,6 +523,8 @@ def show_configuration_page():
                     'data_type_msms': st.session_state.data_type_msms,
                     'ion': st.session_state.ion,
                     'target_omics': st.session_state.target_omics,
+                    'accu_mass_ms1': st.session_state.accu_mass_ms1,
+                    'accu_mass_ms2': st.session_state.accu_mass_ms2,
                     'use_raw_file': selection_mode == "Enter Raw File Names"
                 }
                 
@@ -611,15 +558,15 @@ def show_configuration_page():
             st.code(f"Project: {st.session_state.project_file_path}", language="text")
             st.code(f"Analysis: {st.session_state.folder_analysis_path}", language="text")
             st.code(f"Library: {st.session_state.library_path}", language="text")
-            st.code(f"Result: {st.session_state.result_path}", language="text")
+            st.code(f"Result: {st.session_state.load_parameter_path}", language="text")
             
-            st.markdown("**Selected Folders:**")
-            if st.session_state.folders_to_select:
-                for idx, folder in enumerate(st.session_state.folders_to_select, 1):
+            st.markdown("**Selected Raw Files:**")
+            if raw_file_list:
+                for idx, folder in enumerate(raw_file_list, 1):
                     st.write(f"`{idx}.` {folder}")
-                st.info(f"Total: **{len(st.session_state.folders_to_select)}** folders")
+                st.info(f"Total: **{len(raw_file_list)}** files")
             else:
-                st.write("• No folders selected")
+                st.write("• No files selected")
         
         with col2:
             st.markdown("**MS Parameters:**")
@@ -630,6 +577,8 @@ def show_configuration_page():
             st.write(f"**MS1 Data:** {st.session_state.data_ms1}")
             st.write(f"**MS/MS Data:** {st.session_state.data_type_msms}")
             st.write(f"**Ion Mode:** {st.session_state.ion}")
+            st.write(f"**Accurate Mass MS1:** {st.session_state.accu_mass_ms1} Da")
+            st.write(f"**Accurate Mass MS2:** {st.session_state.accu_mass_ms2} Da")
         
         # JSON view option
         if st.checkbox("Show raw JSON", key="show_json"):
@@ -640,13 +589,15 @@ def show_configuration_page():
                 'folders_to_select': folders_to_select,
                 'raw_files_to_select': raw_file_list,
                 'library_path': st.session_state.library_path,
-                'result_path': st.session_state.result_path,
+                'load_parameter_path': st.session_state.load_parameter_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,
                 'data_ms1': st.session_state.data_ms1,
                 'data_type_msms': st.session_state.data_type_msms,
                 'ion': st.session_state.ion,
-                'target_omics': st.session_state.target_omics
+                'target_omics': st.session_state.target_omics,
+                'accu_mass_ms1': st.session_state.accu_mass_ms1,
+                'accu_mass_ms2': st.session_state.accu_mass_ms2
             }
             st.json(preview_config)
