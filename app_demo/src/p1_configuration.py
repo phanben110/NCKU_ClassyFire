@@ -331,7 +331,7 @@ def show_configuration_page():
         # Raw file input mode
         raw_file = True
         raw_file_input = st.text_area(
-            "Folder Names",
+            "Files Name",
             value=current_config.get("raw_file_input", ""),
             placeholder='Example: 50MeOH_QC_ur-4_wei_20251216, 50MeOH_QC_ur-4_wei_20251216_20251217223054',
             help='Enter folder names separated by commas. The .d extension will be added automatically if not present.',

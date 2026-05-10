@@ -49,7 +49,11 @@ data_type_msms = config["data_type_msms"]
 ion = config["ion"]
 target_omics = config["target_omics"]
 
+load_parameter_path = config["load_parameter_path"]
 library_path = config["library_path"]
+
+accu_mass_ms1 = config["accu_mass_ms1"]
+accu_mass_ms2 = config["accu_mass_ms2"]
 result_path = config["result_path"]
 # backup_path = config["backup_path"]
 

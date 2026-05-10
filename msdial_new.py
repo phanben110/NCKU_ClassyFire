@@ -260,6 +260,31 @@ next_path = main_window.child_window(title="Next", control_type = "Text")  # Tì
 next_path.click_input()
 time.sleep(2)
 
+#Load parameter files
+load_parameter = main_window.child_window(title="Load parameter", control_type="Button")
+load_parameter.click_input()
+
+# Change folder path having analysis folders
+edit_path = main_window.child_window(title="All locations", control_type="SplitButton")
+trys.click_input()
+# Paste folder_analysis_path
+load_parameter_path = configs.load_parameter_path
+# load_parameter_path = "D:\代謝體\自動化檔案\Database\Msdial_neg_0.05Da方法.mdparameter"
+load_path, load_name = os.path.split(load_parameter_path)
+pyperclip.copy(load_path.strip('"'))
+send_keys("^v")
+send_keys("{ENTER}")
+time.sleep(5)
+
+file_name_edit = main_window.child_window(
+        title="File name:",
+        auto_id="1148",
+        control_type="Edit"
+    )
+file_name_edit.set_text(load_name)
+time.sleep(3)
+send_keys("{ENTER}")
+
 # List parameters
 # Identification parameters
 identification = main_window.child_window(title="CompMs.App.Msdial.ViewModel.Setting.IdentifySettingViewModel", control_type="ListItem")
@@ -270,13 +295,27 @@ data_setting_button = main_window.child_window(title="M-3,1L-1,1 -1,3 1,3 1,1 3,
 data_setting_button.click_input()
 
 #Edit library_path
-library_path = configs.library_path
-if ion == "Positive ion mode":
-    file_library = library_path + r'\Pos_bank_唯礽.msp'
-elif ion == "Negative ion mode":
-    file_library = library_path + r'\Neg_bank_唯礽.msp'
+library_path = configs.library_path.strip('"')
 database_path_edit = main_window.descendants(control_type="Edit")[0]
-database_path_edit.set_text(file_library)
+database_path_edit.set_text(library_path)
+time.sleep(5)
+
+#Configure Accurate mass MS1, MS2
+annotation_method = main_window.child_window(title="MS/MS identification setting", control_type="Group")
+edits = annotation_method.descendants(control_type="Edit")
+
+#Detect ms1, ms2 position
+edits_sorted = sorted(edits, key=lambda e: e.rectangle().top)
+
+edit_ms1 = edits_sorted[0]  #MS1
+edit_ms2 = edits_sorted[1]  #MS2
+edit_rt  = edits_sorted[2]
+
+accu_mass_ms1 = configs.accu_mass_ms1
+accu_mass_ms2 = configs.accu_mass_ms2
+edit_ms1.set_text(accu_mass_ms1)
+edit_ms2.set_text(accu_mass_ms2)
+time.sleep(5)
 
 #Run process
 run = main_window.child_window(title="Run", control_type = "Text")  # Tìm ô nhập liệu
@@ -323,6 +362,7 @@ list_result_window = result_window.child_window(title="Peak list export", contro
 result_path = configs.result_path
 input_box = list_result_window.descendants(control_type="Edit")[0]
 input_box.set_text(result_path.strip('"'))
+time.sleep(5)
 
 # Add results
 add_all = list_result_window.child_window(title="Add all >>", control_type="Button")
@@ -331,17 +371,6 @@ add_all.click()
 # Export results
 export_results = list_result_window.child_window(title="Export", control_type="Button")
 export_results.click()
-
-# # Copy file
-# dest_dir = r"C:\Users\user\Desktop\自動化檔案\data\clean_result"
-# os.makedirs(dest_dir, exist_ok=True)
-
-# for file_name in os.listdir(result_path):
-#     source_file = os.path.join(result_path, file_name)
-#     dest_file = os.path.join(dest_dir, file_name)
-
-#     if os.path.isfile(source_file):
-#         shutil.copy2(source_file, dest_file) 
 
 # Show the main Classify
 classify_window = win32gui.FindWindow(None, "ClassyFire - Google Chrome")
