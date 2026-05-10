@@ -6,8 +6,8 @@
         "Pool_ur-5_liu_20251226"
     ],
     "load_parameter_path": "D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
+    "final_output_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\NCKU_ClassyFire\\data\\clean_result",
     "library_path": "D:\\代謝體\\自動化檔案\\Database\\Pos_bank_第三版.msp",
-    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\NCKU_ClassyFire\\data\\clean_result",
     "ionization": "Soft ionization",
     "separation": "Chromatography",
     "collision": "CID/HCD",

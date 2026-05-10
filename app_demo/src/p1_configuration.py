@@ -45,6 +45,7 @@ DEFAULT_CONFIG = {
     "target_omics": "Metabolomics",
     "library_path": r"C:\Users\user\Desktop\自動化檔案\Database",
     "load_parameter_path": r"D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
+    "final_result_path": r"C:\Users\user\Desktop\ClassyFire\Results",
     "accu_mass_ms1": 0.05,
     "accu_mass_ms2": 0.01
 }
@@ -238,6 +239,8 @@ def show_configuration_page():
         st.session_state.library_path = current_config["library_path"]
     if 'load_parameter_path' not in st.session_state:
         st.session_state.load_parameter_path = current_config["load_parameter_path"]
+    if 'final_result_path' not in st.session_state:
+        st.session_state.final_result_path = current_config.get("final_result_path", r"C:\Users\user\Desktop\ClassyFire\Results")
     if 'folders_to_select' not in st.session_state:
         st.session_state.folders_to_select = current_config.get("folders_to_select", [])
     if 'validation_message' not in st.session_state:
@@ -296,12 +299,20 @@ def show_configuration_page():
     st.session_state.library_path = library_path
     
     load_parameter_path = st.text_input(
-        "Result Output Path",
+        "mdparameter path",
         value=st.session_state.load_parameter_path,
-        help="Directory where analysis results will be saved",
+        help="Path to the MS-DIAL parameter file (.mdparameter)",
         key="input_load_parameter_path"
     )
     st.session_state.load_parameter_path = load_parameter_path
+    
+    final_result_path = st.text_input(
+        "Final Output Path",
+        value=st.session_state.final_result_path,
+        help="Directory where the analysis results will be copied to",
+        key="input_final_result_path"
+    )
+    st.session_state.final_result_path = final_result_path
     
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -332,9 +343,10 @@ def show_configuration_page():
                 try:
                     available = []
                     for item in os.listdir(st.session_state.folder_analysis_path):
-                        item_path = os.path.join(st.session_state.folder_analysis_path, item)
-                        if os.path.isdir(item_path):
-                            available.append(item)
+                        # Only look for .raw files
+                        if item.lower().endswith('.raw'):
+                            # Store without .raw extension
+                            available.append(item[:-4])
                     st.session_state.available_raw_files = sorted(available)
                 except Exception as e:
                     st.warning(f"Error scanning folder: {e}")
@@ -346,7 +358,7 @@ def show_configuration_page():
         available = st.session_state.available_raw_files
         
         if available:
-            st.markdown(f'<div class="folder-info">📁 Found {len(available)} raw folders in: <code>{st.session_state.folder_analysis_path}</code></div>', 
+            st.markdown(f'<div class="folder-info">📁 Found {len(available)} .raw files in: <code>{st.session_state.folder_analysis_path}</code></div>', 
                     unsafe_allow_html=True)
             
             selected_raw_files = st.multiselect(
@@ -368,9 +380,8 @@ def show_configuration_page():
             else:
                 st.warning("⚠️ No folders selected for analysis")
         else:
-            st.warning(f"⚠️ No raw folders found in: {st.session_state.folder_analysis_path}")
-            st.info("💡 Please check if the Analysis Folder Path is correct and contains raw data folders")
-
+                st.warning(f"⚠️ No .raw files found in: {st.session_state.folder_analysis_path}")
+                st.info("💡 Please check if the Analysis Folder Path is correct and contains .raw data files")
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ==================== SECTION 3: MS-DIAL PARAMETERS ====================
@@ -484,6 +495,7 @@ def show_configuration_page():
                 'folder_analysis_path': st.session_state.folder_analysis_path,
                 'library_path': st.session_state.library_path,
                 'load_parameter_path': st.session_state.load_parameter_path,
+                'final_result_path': st.session_state.final_result_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,
@@ -516,6 +528,7 @@ def show_configuration_page():
                     'raw_files_to_select': raw_file_list,
                     'library_path': st.session_state.library_path,
                     'load_parameter_path': st.session_state.load_parameter_path,
+                    'final_result_path': st.session_state.final_result_path,
                     'ionization': st.session_state.ionization,
                     'separation': st.session_state.separation,
                     'collision': st.session_state.collision,
@@ -558,7 +571,8 @@ def show_configuration_page():
             st.code(f"Project: {st.session_state.project_file_path}", language="text")
             st.code(f"Analysis: {st.session_state.folder_analysis_path}", language="text")
             st.code(f"Library: {st.session_state.library_path}", language="text")
-            st.code(f"Result: {st.session_state.load_parameter_path}", language="text")
+            st.code(f"Parameter: {st.session_state.load_parameter_path}", language="text")
+            st.code(f"Output: {st.session_state.final_result_path}", language="text")
             
             st.markdown("**Selected Raw Files:**")
             if raw_file_list:
@@ -590,6 +604,7 @@ def show_configuration_page():
                 'raw_files_to_select': raw_file_list,
                 'library_path': st.session_state.library_path,
                 'load_parameter_path': st.session_state.load_parameter_path,
+                'final_result_path': st.session_state.final_result_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,
