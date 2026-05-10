@@ -169,7 +169,7 @@ def run_pipeline_step(step_number, pipeline, status_text, log_capture, progress_
 
 def rerun_app():
     """Handle Streamlit rerun for compatibility"""
-    st.experimental_rerun()
+    st.rerun()
 
 def display_pipeline_info():
     """Display information about the pipeline steps"""
