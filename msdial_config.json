@@ -2,20 +2,22 @@
     "app_path": "C:\\Users\\user\\Downloads\\MSDIAL.v5.5.250627-net48\\MSDIAL.exe",
     "project_file_path": "D:\\代謝體\\上機後原始data\\益君\\空白",
     "folder_analysis_path": "D:\\代謝體\\上機後原始data\\益君\\尿液\\Metabolite_ur_liu_TEST",
+    "folders_to_select": [],
     "raw_files_to_select": [
         "Pool_ur-5_liu_20251226"
     ],
-    "load_parameter_path": "D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
-    "final_output_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\NCKU_ClassyFire\\data\\clean_result",
+    "result_path": "C:\\Users\\user\\Desktop\\自動化檔案\\data\\NCKU_ClassyFire\\data\\clean_result",
     "library_path": "D:\\代謝體\\自動化檔案\\Database\\Pos_bank_第三版.msp",
+    "load_parameter_path": "D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
+    "final_result_path": "C:\\Users\\user\\Desktop\\ClassyFire\\Results",
     "ionization": "Soft ionization",
-    "separation": "Chromatography",
+    "separation": "Direct infusion",
     "collision": "CID/HCD",
     "data_ms1": "Centroid data",
     "data_type_msms": "Centroid data",
     "ion": "Positive ion mode",
     "target_omics": "Metabolomics",
-    "accu_mass_ms1": 0.05,
-    "accu_mass_ms2": 0.01,
+    "accu_mass_ms1": 0.08,
+    "accu_mass_ms2": 0.07,
     "use_raw_file": true
 }

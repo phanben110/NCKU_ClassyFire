@@ -1,33 +1,3 @@
-# #App path
-# app_path = r"C:\Users\user\Downloads\MSDIAL.v5.5.250627-net48\MSDIAL.exe"
-
-
-# #Save project file
-# project_file_path = r"C:\Users\user\Desktop\自動化檔案\data\projects"
-
-# #Select Input folder paths
-# folder_analysis_path = r"C:\Users\user\Documents\1209_pos_testUR"
-# #C:\Users\user\Documents\1209_NEG_testUR
-# #C:\Users\user\Documents\1209_pos_testUR
-# #C:\Users\user\Documents\1211_POS_testBL
-
-# #Select input folder (Input of MS-DIAL: Only name of folder)
-# folders_to_select = ["POOL_POS1209_LIU_54_01_2081.d","QC_40PPB_4_95_01_2091.d","UR2_POS1209_WEI_38_01_2086.d","POOL_POS1209_WEI_42_01_2090.d"]
-
-# #Step 6: Set parameters
-# ionization = "Soft ionization"  #Opts: "Soft ionization", "Hard ionization"
-# separation = "Chromatography" #Opts: "Chromatography", "Direct infusion" 
-# collision = "CID/HCD" #Opts: "CID/HCD", "ECD", "HotECD", "EIEIO", "EID", "OAD"
-# data_ms1 = "Centroid data" #Opts: "Profile data", "Centroid data"
-# data_type_msms = "Centroid data" #Opts: "Profile data", "Centroid data"
-# ion = "Positive ion mode" #Opts: "Positive ion mode", "Negative ion mode"
-# target_omics = "Metabolomics" #Opts: "Metabolomics", "Lipidomics", "Proteomics"
-
-# #Choose libary path
-# library_path = r"C:\Users\user\Desktop\自動化檔案\Database"
-# #Save output
-# result_path = r"C:\Users\user\Desktop\自動化檔案\data\clean_result"
-
 import json
 
 # Load config from JSON file
@@ -35,28 +5,35 @@ with open("msdial_config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 
 # Assign config values to variables
-app_path = config["app_path"]
-project_file_path = config["project_file_path"]
-folder_analysis_path = config["folder_analysis_path"]
-raw_files_to_select = config["raw_files_to_select"]
-folders_to_select = config["folders_to_select"]
+import json
+import os
 
-ionization = config["ionization"]
-separation = config["separation"]
-collision = config["collision"]
-data_ms1 = config["data_ms1"]
-data_type_msms = config["data_type_msms"]
-ion = config["ion"]
-target_omics = config["target_omics"]
+# Uses absolute path to ensure it reads the correct file in the same directory
+config_path = os.path.join(os.path.dirname(__file__), "msdial_config.json")
 
-load_parameter_path = config["load_parameter_path"]
-library_path = config["library_path"]
+with open(config_path, "r", encoding="utf-8") as f:
+    config = json.load(f)
 
-accu_mass_ms1 = config["accu_mass_ms1"]
-accu_mass_ms2 = config["accu_mass_ms2"]
-result_path = config["result_path"]
-# backup_path = config["backup_path"]
+# Using .get() prevents KeyError by returning None or a default value if missing
+app_path = config.get("app_path")
+project_file_path = config.get("project_file_path")
+folder_analysis_path = config.get("folder_analysis_path")
+raw_files_to_select = config.get("raw_files_to_select", [])
+folders_to_select = config.get("folders_to_select", [])
 
-# Optional: print to check values
-print("App Path:", app_path)
-print("Selected Folders:", folders_to_select)
+ionization = config.get("ionization")
+separation = config.get("separation")
+collision = config.get("collision")
+data_ms1 = config.get("data_ms1")
+data_type_msms = config.get("data_type_msms")
+ion = config.get("ion")
+target_omics = config.get("target_omics")
+
+load_parameter_path = config.get("load_parameter_path")
+library_path = config.get("library_path")
+
+accu_mass_ms1 = config.get("accu_mass_ms1")
+accu_mass_ms2 = config.get("accu_mass_ms2")
+
+result_path = config.get("result_path") 
+final_result_path = config.get("final_result_path")

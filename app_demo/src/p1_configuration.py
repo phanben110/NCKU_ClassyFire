@@ -35,7 +35,7 @@ CONFIG_FILE = "msdial_config.json"
 DEFAULT_CONFIG = {
     "app_path": r"C:\Users\user\Downloads\MSDIAL.v5.5.250627-net48\MSDIAL.exe",
     "project_file_path": r"C:\Users\user\Desktop\自動化檔案\data\projects",
-    "folder_analysis_path": r"C:\Users\user\Documents\1209_pos_testUR",
+    "folder_analysis_path": r"D:\\代謝體\\上機後原始data\\益君\\尿液\\Metabolite_ur_liu_TEST",
     "ionization": "Soft ionization",
     "separation": "Chromatography",
     "collision": "CID/HCD", 
@@ -43,8 +43,9 @@ DEFAULT_CONFIG = {
     "data_type_msms": "Centroid data",
     "ion": "Positive ion mode",
     "target_omics": "Metabolomics",
-    "library_path": r"C:\Users\user\Desktop\自動化檔案\Database",
-    "load_parameter_path": r"D:\\代謝體\\自動化檔案\\Database\\Msdial_pos_0.05Da方法.mdparameter",
+    "library_path": r"D:\代謝體\自動化檔案\Database\Pos_bank_第三版.msp",
+    "load_parameter_path": r"D:\代謝體\自動化檔案\Database\Msdial_pos_0.05Da方法.mdparameter",
+    "result_path": r"C:\Users\user\Desktop\自動化檔案\data\NCKU_ClassyFire\data\clean_result",
     "final_result_path": r"C:\Users\user\Desktop\ClassyFire\Results",
     "accu_mass_ms1": 0.05,
     "accu_mass_ms2": 0.01
@@ -241,6 +242,8 @@ def show_configuration_page():
         st.session_state.load_parameter_path = current_config["load_parameter_path"]
     if 'final_result_path' not in st.session_state:
         st.session_state.final_result_path = current_config.get("final_result_path", r"C:\Users\user\Desktop\ClassyFire\Results")
+    if 'result_path' not in st.session_state:
+        st.session_state.result_path = current_config["result_path"]
     if 'folders_to_select' not in st.session_state:
         st.session_state.folders_to_select = current_config.get("folders_to_select", [])
     if 'validation_message' not in st.session_state:
@@ -496,6 +499,7 @@ def show_configuration_page():
                 'library_path': st.session_state.library_path,
                 'load_parameter_path': st.session_state.load_parameter_path,
                 'final_result_path': st.session_state.final_result_path,
+                'result_path': st.session_state.result_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,
@@ -526,6 +530,7 @@ def show_configuration_page():
                     'folder_analysis_path': st.session_state.folder_analysis_path,
                     'folders_to_select': folders_to_select,
                     'raw_files_to_select': raw_file_list,
+                    'result_path': st.session_state.result_path,
                     'library_path': st.session_state.library_path,
                     'load_parameter_path': st.session_state.load_parameter_path,
                     'final_result_path': st.session_state.final_result_path,
@@ -605,6 +610,7 @@ def show_configuration_page():
                 'library_path': st.session_state.library_path,
                 'load_parameter_path': st.session_state.load_parameter_path,
                 'final_result_path': st.session_state.final_result_path,
+                'result_path': st.session_state.result_path,
                 'ionization': st.session_state.ionization,
                 'separation': st.session_state.separation,
                 'collision': st.session_state.collision,

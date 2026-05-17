@@ -94,76 +94,76 @@ if raw_input:
     file_name_edit.set_text(files_str)
     time.sleep(1)
     send_keys("{ENTER}")
-else:
-    # Sort list display
-    #Get list folder displayed on screen
-    import_window = main_window.child_window(title="Items View", control_type="List")
-    list_items = import_window.descendants(control_type="ListItem")
-    folder_names = [item.window_text() for item in list_items]
+# else:
+#     # Sort list display
+#     #Get list folder displayed on screen
+#     import_window = main_window.child_window(title="Items View", control_type="List")
+#     list_items = import_window.descendants(control_type="ListItem")
+#     folder_names = [item.window_text() for item in list_items]
 
-    # Compare time
-    folder_path_1 = folder_analysis_path +  rf"\{folder_names[0]}"
-    folder_path_n = folder_analysis_path +  rf"\{folder_names[-1]}"
+#     # Compare time
+#     folder_path_1 = folder_analysis_path +  rf"\{folder_names[0]}"
+#     folder_path_n = folder_analysis_path +  rf"\{folder_names[-1]}"
 
-    time1 = datetime.datetime.fromtimestamp(os.stat(folder_path_1).st_mtime)
-    time2 = datetime.datetime.fromtimestamp(os.stat(folder_path_n).st_mtime)
+#     time1 = datetime.datetime.fromtimestamp(os.stat(folder_path_1).st_mtime)
+#     time2 = datetime.datetime.fromtimestamp(os.stat(folder_path_n).st_mtime)
 
-    #Make screen display the new ones
-    if time1 < time2:
-        day_motifiled = main_window.child_window(title="Date modified", auto_id="System.DateModified", control_type="SplitButton")
-        day_motifiled.click_input()
-    time.sleep(1)
+#     #Make screen display the new ones
+#     if time1 < time2:
+#         day_motifiled = main_window.child_window(title="Date modified", auto_id="System.DateModified", control_type="SplitButton")
+#         day_motifiled.click_input()
+#     time.sleep(1)
 
-    # Lấy tọa độ trung tâm của vùng cuộn
-    rect = import_window.rectangle()
-    center_x = rect.left + (rect.width() // 2)
-    center_y = rect.top + (rect.height() // 2)
+#     # Lấy tọa độ trung tâm của vùng cuộn
+#     rect = import_window.rectangle()
+#     center_x = rect.left + (rect.width() // 2)
+#     center_y = rect.top + (rect.height() // 2)
 
-    # Cuộn lên trên (số bước cuộn có thể điều chỉnh)
-    mouse.scroll(coords=(center_x, center_y), wheel_dist=1000)
+#     # Cuộn lên trên (số bước cuộn có thể điều chỉnh)
+#     mouse.scroll(coords=(center_x, center_y), wheel_dist=1000)
 
-    # Select analysis folders
-    folders_to_select = configs.folders_to_select
+#     # Select analysis folders
+#     folders_to_select = configs.folders_to_select
 
-    pyautogui.keyDown('ctrl')
-    for i in range(len(folders_to_select)-1):
-        #Detect folders
-        try:
-            folder = main_window.child_window(title=folders_to_select[i], control_type="ListItem")
-            folder_rect = folder.rectangle()
-        except:
-            print(f"Error: Can not find {folders_to_select[i]}")
-            raise SystemExit
+#     pyautogui.keyDown('ctrl')
+#     for i in range(len(folders_to_select)-1):
+#         #Detect folders
+#         try:
+#             folder = main_window.child_window(title=folders_to_select[i], control_type="ListItem")
+#             folder_rect = folder.rectangle()
+#         except:
+#             print(f"Error: Can not find {folders_to_select[i]}")
+#             raise SystemExit
 
-        x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
-        y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
+#         x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
+#         y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
 
-        pyautogui.click(x, y)
-    try:
-        folder = main_window.child_window(title=folders_to_select[-1], control_type="ListItem")
-        folder_rect = folder.rectangle()
-    except:
-        print(f"Error: Can not find {folders_to_select[-1]}")
-        raise SystemExit
+#         pyautogui.click(x, y)
+#     try:
+#         folder = main_window.child_window(title=folders_to_select[-1], control_type="ListItem")
+#         folder_rect = folder.rectangle()
+#     except:
+#         print(f"Error: Can not find {folders_to_select[-1]}")
+#         raise SystemExit
 
-    start_x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
-    start_y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
+#     start_x = (folder_rect.right - folder_rect.left) // 2 + folder_rect.left
+#     start_y = (folder_rect.top - folder_rect.bottom) // 2 + folder_rect.bottom
 
-    # Setting zone
-    center_x = new_left - 30 
-    center_y = (top - bottom) // 2 +  bottom
-    end_x, end_y = center_x, center_y  # Target
+#     # Setting zone
+#     center_x = new_left - 30 
+#     center_y = (top - bottom) // 2 +  bottom
+#     end_x, end_y = center_x, center_y  # Target
 
-    #Add analyis folders
-    pyautogui.moveTo(start_x, start_y)
-    pyautogui.mouseDown()
-    pyautogui.moveTo(end_x, end_y, duration=0.2)
-    pyautogui.mouseUp()
-    pyautogui.keyUp('ctrl')
+#     #Add analyis folders
+#     pyautogui.moveTo(start_x, start_y)
+#     pyautogui.mouseDown()
+#     pyautogui.moveTo(end_x, end_y, duration=0.2)
+#     pyautogui.mouseUp()
+#     pyautogui.keyUp('ctrl')
 
-    # Close Import analysis files window
-    folder_window = main_window.child_window(title="Import analysis files", control_type="Window")
-    folder_window.close()
+#     # Close Import analysis files window
+#     folder_window = main_window.child_window(title="Import analysis files", control_type="Window")
+#     folder_window.close()
 
 # Click "Next"
 next_path = main_window.child_window(title="Next", control_type = "Text")  # Tìm ô nhập liệu
@@ -309,7 +309,6 @@ edits_sorted = sorted(edits, key=lambda e: e.rectangle().top)
 
 edit_ms1 = edits_sorted[0]  #MS1
 edit_ms2 = edits_sorted[1]  #MS2
-edit_rt  = edits_sorted[2]
 
 accu_mass_ms1 = configs.accu_mass_ms1
 accu_mass_ms2 = configs.accu_mass_ms2
@@ -322,7 +321,7 @@ run = main_window.child_window(title="Run", control_type = "Text")  # Tìm ô nh
 run.click_input()
 
 #Wating for loading library
-time.sleep(30)
+time.sleep(10)
 
 #Detech window:
 #ERROR window: Error parsing file
