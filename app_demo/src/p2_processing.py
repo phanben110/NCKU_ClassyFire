@@ -5,11 +5,18 @@ import shutil
 import subprocess
 from datetime import datetime
 import logging
+from pathlib import Path
 from app_demo.src.core import ChemicalAnalysisPipeline, Config
 import queue
 import io
 import sys
 from app_demo.src.title import title_app
+
+app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
+
+from copy_results_to_final import copy_results_to_final, copy_folder_results_to_final
 
 # Configure logging
 logging.basicConfig(
@@ -105,8 +112,8 @@ def run_main_script():
     try:
         log_access("Starting MS-DIAL main.py script execution")
         subprocess.run(
-            #["python", "main.py"],
-            ["python","msdial_new.py"],
+            ["python", "main.py"],
+            #["python","msdial_new.py"],
             check=True,         # nếu main.py trả về lỗi (exit code != 0) sẽ raise Exception
             text=True
         )
@@ -342,6 +349,19 @@ def main():
                     log_msg = f"Task 1 completed: Files detected in clean_result folder: {len(files)} files"
                     log_access(log_msg)
                     st.session_state.log_capture.add_log(log_msg)
+                    status_text.success("✅ Task 1 completed! Copying Task 1 results to final_result_path...")
+                    try:
+                        config = Config()
+                        copy_result = copy_folder_results_to_final(
+                            'Task1_CleanResult',
+                            Path(config.SOURCE_FOLDER),
+                            overwrite=True
+                        )
+                        status_text.info(f"Copied {copy_result['copied_count']} files to: {copy_result['dst_root']}")
+                        st.session_state.log_capture.add_log(f"Copied results after Task 1 to {copy_result['dst_root']}")
+                    except Exception as e:
+                        st.warning(f"⚠️ Copy after Task 1 failed: {e}")
+                        st.session_state.log_capture.add_log(f"ERROR: Copy after Task 1 failed: {e}")
                     status_text.success("✅ Task 1 completed! Starting Task 2: Chemical Structure Classification")
                     progress_bar.progress(50)  # Task 1 = 50%
                     st.session_state.log_capture.add_log("Starting Task 2: Chemical Structure Classification")
@@ -387,6 +407,22 @@ def main():
                         st.error(f"Task 2 stopped at step {step}")
                         st.session_state.process_running = False
                         break
+
+                    try:
+                        config = Config()
+                        step_map = {
+                            1: ('Task2_Step1_Grouping', Path(config.GROUPING_FOLDER)),
+                            2: ('Task2_Step2_Final', Path(config.FINAL_RESULT_FOLDER)),
+                            3: ('Task2_Step3_Converted', Path(config.CONVERT_RESULT_FOLDER)),
+                            4: ('Task2_Step4_MetaboanalystPubchem', Path(config.METABOANALYST_FOLDER)),
+                        }
+                        prefix, folder = step_map.get(step, (f'Task2_Step{step}', Path(config.METABOANALYST_FOLDER)))
+                        copy_result = copy_folder_results_to_final(prefix, folder, overwrite=True)
+                        status_text.info(f"Copied {copy_result['copied_count']} files to: {copy_result['dst_root']}")
+                        st.session_state.log_capture.add_log(f"Copied results after Task 2 step {step} to {copy_result['dst_root']}")
+                    except Exception as e:
+                        st.warning(f"⚠️ Copy after Task 2 step {step} failed: {e}")
+                        st.session_state.log_capture.add_log(f"ERROR: Copy after Task 2 step {step} failed: {e}")
                     
                     time.sleep(1)
                 

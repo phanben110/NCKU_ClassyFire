@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import sys
 import logging
 import requests
 import numpy as np
@@ -11,6 +12,12 @@ from app_demo.src.title import title_app
 from app_demo.src.core import Config
 import zipfile
 from datetime import datetime
+
+app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if app_root not in sys.path:
+    sys.path.insert(0, app_root)
+
+from copy_results_to_final import copy_results_to_final
 
 warnings.filterwarnings("ignore")
 
@@ -56,6 +63,18 @@ def download_result(file_names=None, sample_count=None):
     # Pick most recent file
     csv_files.sort(key=lambda x: os.path.getmtime(os.path.join(folder_path, x)), reverse=True)
     file_path = os.path.join(folder_path, csv_files[0])
+
+    try:
+        copy_result = copy_results_to_final()
+        st.success(f"✅ Copied {copy_result['copied_count']} result files to: {copy_result['dst_root']}")
+
+        if copy_result['files']:
+            with st.expander('Show copied file paths'):
+                for item in copy_result['files']:
+                    st.write(item)
+
+    except Exception as e:
+        st.warning(f"⚠️ Copy to final_result_path failed: {e}")
 
     try:
         df = pd.read_csv(file_path)

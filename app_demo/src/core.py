@@ -8,13 +8,14 @@ Purpose: Process chemical data through classification, conversion, and merging
 import requests
 import json
 import os
+import re
 import time
 import pandas as pd
 import glob
 import datetime
 from requests.exceptions import HTTPError, RequestException
 from openpyxl import load_workbook
-from CTSgetPy import CTSgetPy as ct
+import pubchempy as pcp
 
 # ================== CONFIGURATION ==================
 class Config:
@@ -312,12 +313,61 @@ class ChemicalConverter:
         print(f"Saved converted data to {export_file_path}")
     
     def _transform_inchikey(self, identifiers: list, target: str) -> dict:
-        """Transform InChIKey to target identifier using CTS API"""
-        if identifiers:
-            result = ct.CTSget(self.config.CONVERSION_SOURCE, target, identifiers)
-        else:
-            result = {}
+        """Transform InChIKey to target identifier using PubChemPy."""
+        result = {target: {}}
+        if not identifiers:
+            return result
+
+        cache = {}
+        for inchikey in identifiers:
+            if pd.isna(inchikey):
+                continue
+            inchikey = str(inchikey).strip()
+            if not inchikey:
+                continue
+
+            if inchikey in cache:
+                value = cache[inchikey]
+            else:
+                try:
+                    compounds = pcp.get_compounds(inchikey, 'inchikey')
+                    if not compounds:
+                        value = None
+                    else:
+                        value = self._extract_pubchem_target(compounds[0], target)
+                except Exception as e:
+                    print(f"[WARNING] PubChemPy conversion failed for {inchikey} -> {target}: {e}")
+                    value = None
+                cache[inchikey] = value
+
+            if value is not None:
+                result[target][inchikey] = value
+
         return result
+
+    def _extract_pubchem_target(self, compound, target: str):
+        """Extract a specific target identifier from a PubChem compound."""
+        if target == 'PubChem CID':
+            return str(compound.cid)
+
+        synonyms = compound.synonyms or []
+        if target == 'Human Metabolome Database':
+            return self._find_first_synonym(synonyms, r'HMDB\d+')
+        if target == 'KEGG':
+            return self._find_first_synonym(synonyms, r'\bC\d{5}\b')
+        if target == 'ChEBI':
+            return self._find_first_synonym(synonyms, r'CHEBI:\d+')
+        return None
+
+    def _find_first_synonym(self, synonyms, pattern: str):
+        """Return the first synonym matching a regex pattern."""
+        matcher = re.compile(pattern, flags=re.IGNORECASE)
+        for syn in synonyms:
+            if isinstance(syn, str):
+                match = matcher.search(syn)
+                if match:
+                    return match.group(0)
+        return None
 
 
 # ================== STEP 4: DATA AGGREGATION ==================
