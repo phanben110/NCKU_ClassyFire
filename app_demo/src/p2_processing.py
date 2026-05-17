@@ -29,7 +29,7 @@ def clean_result_folders():
     """Clean all result folders to start fresh"""
     config = Config()
     folders_to_clean = [
-        "data/clean_result",
+        config.SOURCE_FOLDER,
         config.GROUPING_FOLDER,
         config.FINAL_RESULT_FOLDER,
         config.CONVERT_RESULT_FOLDER,
@@ -54,7 +54,8 @@ def clean_result_folders():
 #     return len(excel_files) > 0, excel_files
 def check_clean_result_files():
     """Check if files exist in data/clean_result folder"""
-    source_folder = "data/clean_result"
+    config = Config()
+    source_folder = config.SOURCE_FOLDER
     
     log_access("Waiting 5 seconds before checking clean_result files...")
     print("⏳ Waiting 5 seconds before checking files...")

@@ -8,6 +8,7 @@ import io
 import json
 import warnings
 from app_demo.src.title import title_app
+from app_demo.src.core import Config
 import zipfile
 from datetime import datetime
 
@@ -35,7 +36,8 @@ def download_result(file_names=None, sample_count=None):
     log_access("Download result")
     title_app("ClassyFire - Download Results")
 
-    folder_path = "data/metaboanalyst_pubchem"
+    config = Config()
+    folder_path = config.METABOANALYST_FOLDER
 
     if not os.path.exists(folder_path):
         st.warning("📂 The folder 'data/metaboanalyst_pubchem' does not exist.")

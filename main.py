@@ -3,8 +3,8 @@ import shutil
 import os
 
 # Đường dẫn file nguồn và thư mục đích
-source_file = 'data/test/sample.xlsx'
-destination_dir = 'data/clean_result'
+source_file = os.path.join('data', 'test', 'Pool_ur-5_liu_20251226.txt')
+destination_dir = os.path.join('data', 'clean_result')
 
 # Tạo thư mục đích nếu chưa tồn tại
 os.makedirs(destination_dir, exist_ok=True)

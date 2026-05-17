@@ -28,11 +28,11 @@ class Config:
     API_DELAY = 6  # seconds between API calls
     
     # Folder Paths
-    SOURCE_FOLDER = 'data/clean_result'
-    GROUPING_FOLDER = 'data/grouping_result'
-    FINAL_RESULT_FOLDER = 'data/final_result'
-    CONVERT_RESULT_FOLDER = 'data/convert_result'
-    METABOANALYST_FOLDER = 'data/metaboanalyst_pubchem'
+    SOURCE_FOLDER = os.path.join('data', 'clean_result')
+    GROUPING_FOLDER = os.path.join('data', 'grouping_result')
+    FINAL_RESULT_FOLDER = os.path.join('data', 'final_result')
+    CONVERT_RESULT_FOLDER = os.path.join('data', 'convert_result')
+    METABOANALYST_FOLDER = os.path.join('data', 'metaboanalyst_pubchem')
     
     # Conversion Settings
     CONVERSION_SOURCE = 'InChIKey'
