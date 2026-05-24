@@ -13,6 +13,7 @@ import time
 import pandas as pd
 import glob
 import datetime
+from typing import Callable, Optional
 from requests.exceptions import HTTPError, RequestException
 from openpyxl import load_workbook
 import pubchempy as pcp
@@ -90,32 +91,45 @@ class ChemicalClassifier:
                 else:
                     return {}
     
-    def process_classification_files(self):
+    def process_classification_files(self, progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Process all Excel files in source folder for classification"""
-        # Create output folder if it doesn't exist
         if not os.path.exists(self.config.GROUPING_FOLDER):
             os.makedirs(self.config.GROUPING_FOLDER)
-        
-        # Get all Excel files
-        src_files = [f for f in os.listdir(self.config.SOURCE_FOLDER) 
-                    if f.endswith(('.xlsx','.csv','.txt'))]
-        
-        for file in src_files:
-            self._process_single_file(file)
-    
-    def _process_single_file(self, filename: str):
+
+        src_files = [f for f in os.listdir(self.config.SOURCE_FOLDER)
+                     if f.endswith(('.xlsx', '.csv', '.txt'))]
+
+        total_rows = 0
+        file_counts = []
+        for filename in src_files:
+            file_path = os.path.join(self.config.SOURCE_FOLDER, filename)
+            df = pd.read_csv(file_path, sep='\t')
+            if 'Title' not in df.columns and 'Name' in df.columns:
+                df.rename(columns={'Name': 'Title'}, inplace=True)
+            count = int((df['Title'] != 'Unknown').sum()) if 'Title' in df.columns else 0
+            file_counts.append((filename, count))
+            total_rows += count
+
+        if progress_callback:
+            progress_callback(0, total_rows, "Preparing classification")
+
+        rows_processed = 0
+        for filename, count in file_counts:
+            rows_processed += self._process_single_file(filename, rows_processed, total_rows, progress_callback)
+
+        if progress_callback:
+            progress_callback(total_rows, total_rows, "Classification completed")
+
+    def _process_single_file(self, filename: str, base_count: int, total_rows: int,
+                             progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Process a single Excel file for classification"""
         file_path = os.path.join(self.config.SOURCE_FOLDER, filename)
-        #df = pd.read_excel(file_path)
-        df = pd.read_csv(file_path, sep = '\t' )
+        df = pd.read_csv(file_path, sep='\t')
         if 'Title' not in df.columns and 'Name' in df.columns:
             df.rename(columns={'Name': 'Title'}, inplace=True)
 
-        
-        # Filter rows where title is not unknown
         filtered_df = df[df['Title'] != 'Unknown']
-        
-        # Initialize data containers
+
         classification_data = {
             'title': [],
             'inchikey': [],
@@ -126,20 +140,15 @@ class ChemicalClassifier:
             'intermediate_nodes': [],
             'direct_parents': []
         }
-        
-        # Process each row
+
+        processed_in_file = 0
         for _, row in filtered_df.iterrows():
             title = row['Title']
             inchikey = row['InChIKey']
-            
-            # Get classification
+
             res = self.get_classification(inchikey)
-            print(json.dumps(res, indent=4))
-            
-            # Extract classification data
             classification_info = self._extract_classification_info(res)
-            
-            # Append data
+
             classification_data['title'].append(title)
             classification_data['inchikey'].append(inchikey)
             classification_data['Kingdom'].append(classification_info['kingdom'])
@@ -148,12 +157,16 @@ class ChemicalClassifier:
             classification_data['subclass'].append(classification_info['subclass'])
             classification_data['intermediate_nodes'].append(classification_info['intermediate_nodes'])
             classification_data['direct_parents'].append(classification_info['direct_parent'])
-            
-            # Delay between API calls
+
+            processed_in_file += 1
+            if progress_callback and total_rows > 0:
+                progress_callback(base_count + processed_in_file, total_rows,
+                                  f"{filename}: {processed_in_file}/{len(filtered_df)}")
+
             time.sleep(self.config.API_DELAY)
-        
-        # Save results
+
         self._save_classification_results(classification_data, filename)
+        return processed_in_file
     
     def _extract_classification_info(self, res: dict) -> dict:
         """Extract classification information from API response"""
@@ -195,13 +208,27 @@ class DataMerger:
     def __init__(self, config: Config):
         self.config = config
     
-    def merge_classification_data(self):
+    def merge_classification_data(self, progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Merge classification data with original Excel files"""
-        # Build InChIKey dictionary from classification results
         inchikey_dict = self._build_inchikey_dictionary()
-        
-        # Process original Excel files
-        self._process_original_files(inchikey_dict)
+
+        total_rows = 0
+        source_files = []
+        for root, dirs, files in os.walk(self.config.SOURCE_FOLDER):
+            for file in files:
+                if file.endswith((".xlsx", '.csv', '.txt')):
+                    file_path = os.path.join(root, file)
+                    df = pd.read_csv(file_path, sep='\t')
+                    total_rows += len(df)
+                    source_files.append(file_path)
+
+        if progress_callback:
+            progress_callback(0, total_rows, "Preparing merge")
+
+        self._process_original_files(inchikey_dict, source_files, progress_callback, total_rows)
+
+        if progress_callback:
+            progress_callback(total_rows, total_rows, "Merging completed")
     
     def _build_inchikey_dictionary(self) -> dict:
         """Build dictionary mapping InChIKey to classification data"""
@@ -225,29 +252,28 @@ class DataMerger:
         
         return inchikey_dict
     
-    def _process_original_files(self, inchikey_dict: dict):
+    def _process_original_files(self, inchikey_dict: dict, source_files: list,
+                                progress_callback: Optional[Callable[[int, int, Optional[str]], None]],
+                                total_rows: int):
         """Process original Excel files and add classification data"""
-        # Create output folder
         if not os.path.exists(self.config.FINAL_RESULT_FOLDER):
             os.makedirs(self.config.FINAL_RESULT_FOLDER)
-        
-        for root, dirs, files in os.walk(self.config.SOURCE_FOLDER):
-            for file in files:
-                if file.endswith((".xlsx",'.csv', '.txt')):
-                    file_path = os.path.join(root, file)
-                    target_df = pd.read_csv(file_path,sep='\t')
-                    
-                    # Add Class column
-                    target_df["Class"] = None
-                    
-                    # Fill classification data
-                    for index, row in target_df.iterrows():
-                        inchikey = row["InChIKey"]
-                        if inchikey and (inchikey in inchikey_dict):
-                            target_df.at[index, "Class"] = inchikey_dict[inchikey]
-                    
-                    # Save result
-                    self._save_merged_file(target_df, file)
+
+        rows_processed = 0
+        for file_path in source_files:
+            target_df = pd.read_csv(file_path, sep='\t')
+            target_df["Class"] = None
+
+            for index, row in target_df.iterrows():
+                inchikey = row["InChIKey"]
+                if inchikey and (inchikey in inchikey_dict):
+                    target_df.at[index, "Class"] = inchikey_dict[inchikey]
+                rows_processed += 1
+                if progress_callback and total_rows > 0:
+                    progress_callback(rows_processed, total_rows,
+                                      f"Merging {os.path.basename(file_path)} {rows_processed}/{total_rows}")
+
+            self._save_merged_file(target_df, os.path.basename(file_path))
     
     def _save_merged_file(self, df: pd.DataFrame, filename: str):
         """Save merged data to CSV file with timestamp"""
@@ -271,20 +297,24 @@ class ChemicalConverter:
     def __init__(self, config: Config):
         self.config = config
     
-    def convert_identifiers(self):
+    def convert_identifiers(self, progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Convert InChIKey to other chemical identifiers"""
         file_list = glob.glob(os.path.join(self.config.FINAL_RESULT_FOLDER, '*'))
-        
+
         if len(file_list) == 0:
             print('[ERROR] No files in the final_result folder to process')
             return
-        
-        # Create output folder
+
         if not os.path.exists(self.config.CONVERT_RESULT_FOLDER):
             os.makedirs(self.config.CONVERT_RESULT_FOLDER)
-        
-        for file_path in file_list:
+
+        if progress_callback:
+            progress_callback(0, len(file_list), "Preparing conversion")
+
+        for index, file_path in enumerate(file_list, start=1):
             self._convert_single_file(file_path)
+            if progress_callback:
+                progress_callback(index, len(file_list), f"Converting {os.path.basename(file_path)}")
     
     def _convert_single_file(self, file_path: str):
         """Convert identifiers in a single file"""
@@ -377,35 +407,33 @@ class DataAggregator:
     def __init__(self, config: Config):
         self.config = config
     
-    def aggregate_data(self):
+    def aggregate_data(self, progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Aggregate all converted data into final merged file"""
-        csv_files = [f for f in os.listdir(self.config.CONVERT_RESULT_FOLDER) 
-                    if f.endswith((".csv",".txt"))]
-        
+        csv_files = [f for f in os.listdir(self.config.CONVERT_RESULT_FOLDER)
+                    if f.endswith((".csv", ".txt"))]
+
         if not csv_files:
             print("No CSV files found to aggregate")
             return
-        
-        print("Starting to merge these files:")
-        print(csv_files)
-        
-        # Initialize output DataFrame
+
+        if progress_callback:
+            progress_callback(0, len(csv_files), "Preparing aggregation")
+
         df_output = pd.DataFrame(columns=['Title', 'PubChem CID'])
-        
-        # Process each file
-        for file_name in csv_files:
+
+        for index, file_name in enumerate(csv_files, start=1):
             file_path = os.path.join(self.config.CONVERT_RESULT_FOLDER, file_name)
             df_input = pd.read_csv(file_path)
             if 'Title' not in df_input.columns and 'Name' in df_input.columns:
                 df_input.rename(columns={'Name': 'Title'}, inplace=True)
-            
+
             column_name = file_name.split('.')[0]
             df_output[column_name] = ''
-            
-            # Merge data
             df_output = self._merge_file_data(df_input, df_output, column_name)
-        
-        # Save final result
+
+            if progress_callback:
+                progress_callback(index, len(csv_files), f"Aggregating {file_name}")
+
         self._save_aggregated_data(df_output)
     
     def _merge_file_data(self, df_input: pd.DataFrame, df_output: pd.DataFrame, column_name: str) -> pd.DataFrame:
@@ -480,15 +508,15 @@ class ChemicalAnalysisPipeline:
             print(f"Pipeline failed with error: {e}")
             raise
     
-    def run_step(self, step_number: int):
+    def run_step(self, step_number: int, progress_callback: Optional[Callable[[int, int, Optional[str]], None]] = None):
         """Run a specific step of the pipeline"""
         steps = {
-            1: self.classifier.process_classification_files,
-            2: self.merger.merge_classification_data,
-            3: self.converter.convert_identifiers,
-            4: self.aggregator.aggregate_data
+            1: lambda: self.classifier.process_classification_files(progress_callback=progress_callback),
+            2: lambda: self.merger.merge_classification_data(progress_callback=progress_callback),
+            3: lambda: self.converter.convert_identifiers(progress_callback=progress_callback),
+            4: lambda: self.aggregator.aggregate_data(progress_callback=progress_callback)
         }
-        
+
         if step_number in steps:
             print(f"Running step {step_number}...")
             steps[step_number]()

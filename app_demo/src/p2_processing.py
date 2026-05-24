@@ -3,14 +3,15 @@ import os
 import time
 import shutil
 import subprocess
+import html
 from datetime import datetime
 import logging
 from pathlib import Path
 from app_demo.src.core import ChemicalAnalysisPipeline, Config
 import queue
-import io
 import sys
 from app_demo.src.title import title_app
+
 
 app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if app_root not in sys.path:
@@ -112,8 +113,8 @@ def run_main_script():
     try:
         log_access("Starting MS-DIAL main.py script execution")
         subprocess.run(
-            ["python", "main.py"],
-            #["python","msdial_new.py"],
+            #["python", "main.py"],
+            ["python","msdial_new.py"],
             check=True,         # nếu main.py trả về lỗi (exit code != 0) sẽ raise Exception
             text=True
         )
@@ -141,39 +142,89 @@ class LogCapture:
         if len(self.logs) > 100:
             self.logs = self.logs[-100:]
 
-def run_pipeline_step(step_number, pipeline, status_text, log_capture, progress_bar):
+
+def format_duration(seconds):
+    seconds = int(seconds)
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+    if hours:
+        return f"{hours}h {minutes}m {secs}s"
+    if minutes:
+        return f"{minutes}m {secs}s"
+    return f"{secs}s"
+
+
+def estimate_time_remaining(start_time, percent):
+    if percent <= 0 or percent >= 100:
+        return "Estimating..."
+    elapsed = time.time() - start_time
+    estimated_total = elapsed / (percent / 100.0)
+    remaining = max(estimated_total - elapsed, 0)
+    return f"{format_duration(remaining)} remaining"
+
+
+def update_overall_progress(overall_text, overall_progress_bar, eta_text, step_index, total_steps, ratio, description, start_time):
+    ratio = min(max(ratio, 0.0), 1.0)
+    percent = int(((step_index - 1) + ratio) / total_steps * 100)
+    overall_progress_bar.progress(percent)
+    overall_text.text(f"Overall progress: {step_index}/{total_steps} — {description} ({percent}%)")
+    eta_text.text(f"⏳ {estimate_time_remaining(start_time, percent)}")
+    return percent
+
+
+def update_recent_activity(placeholder, log_capture, max_entries=80):
+    logs = log_capture.logs[-max_entries:]
+    if not logs:
+        content = "<div class='custom-log-box'>No recent activity yet.</div>"
+    else:
+        escaped_logs = html.escape("\n".join(logs))
+        content = f"<div class='custom-log-box'><pre>{escaped_logs}</pre></div>"
+    placeholder.markdown(content, unsafe_allow_html=True)
+
+
+def run_pipeline_step(step_number, pipeline, status_text, step_text, log_capture, step_progress_bar, overall_text, overall_progress_bar, overall_eta_text, overall_step_index, total_steps, start_time):
     step_names = {
         1: "Classification Processing",
         2: "Data Merging",
         3: "Identifier Conversion",
         4: "Final Aggregation"
     }
-    
+
+    step_name = step_names.get(step_number, f"Step {step_number}")
+    status_text.text(f"Task 2 — Step {step_number}/4")
+    step_text.text(step_name)
+    log_capture.add_log(f"Starting Task 2, Step {step_number}: {step_name}")
+
+    current_progress = {'done': 0, 'total': 0}
+
+    def progress_callback(done, total, message=None):
+        current_progress['done'] = done
+        current_progress['total'] = total
+        percent = int(done / total * 100) if total else 0
+        step_progress_bar.progress(percent)
+        label = message or f"{done}/{total}"
+        step_text.text(f"{step_name} — {label}")
+        update_overall_progress(overall_text, overall_progress_bar, overall_eta_text, overall_step_index, total_steps, done / total if total else 0.0, step_name, start_time)
+
     try:
-        step_name = step_names.get(step_number, f"Step {step_number}")
-        status_text.text(f"Running Task 2, Step {step_number}: {step_name}...")
-        log_capture.add_log(f"Starting Task 2, Step {step_number}: {step_name}")
-        
-        stdout_buffer = io.StringIO()
-        sys.stdout = stdout_buffer
-        
-        try:
-            pipeline.run_step(step_number)
-            log_capture.add_log(f"Task 2, Step {step_number} completed successfully")
-            status_text.text(f"Task 2, Step {step_number}: {step_name} completed!")
-            progress_bar.progress(min(100, int(50 + step_number * 12.5)))  # 50% + 12.5% per step
-            return True
-        finally:
-            sys.stdout = sys.__stdout__
-            stdout_content = stdout_buffer.getvalue()
-            if stdout_content.strip():
-                for line in stdout_content.strip().split('\n'):
-                    log_capture.add_log(f"STDOUT: {line}")
-                    
+        pipeline.run_step(step_number, progress_callback=progress_callback)
+        log_capture.add_log(f"Task 2, Step {step_number} completed successfully")
+        status_text.success(f"Task 2 — Step {step_number}/4 completed")
+        if current_progress['total']:
+            step_progress_bar.progress(100)
+            step_text.text(f"{step_name} — Completed {current_progress['done']}/{current_progress['total']}")
+        else:
+            step_progress_bar.progress(100)
+            step_text.text(f"{step_name} — Completed")
+        update_overall_progress(overall_text, overall_progress_bar, overall_eta_text, overall_step_index, total_steps, 1.0, step_name, start_time)
+        return True
     except Exception as e:
         log_capture.add_log(f"ERROR in Task 2, Step {step_number}: {str(e)}")
         status_text.error(f"Error in Task 2, Step {step_number}: {str(e)}")
+        step_text.text(f"{step_name} — failed")
         return False
+
 
 def rerun_app():
     """Handle Streamlit rerun for compatibility"""
@@ -251,6 +302,25 @@ def main():
             border-radius: 5px;
             box-shadow: none;  /* Removed shadow */
         }
+        .custom-log-box {
+            max-height: 340px;
+            overflow-y: auto;
+            overflow-x: auto;
+            padding: 14px;
+            background: #f7fafc;
+            border: 1px solid #d9e2ec;
+            border-radius: 14px;
+            color: #4b5563;
+            font-size: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            white-space: pre-wrap;
+            line-height: 1.45;
+        }
+        .custom-log-box pre {
+            margin: 0;
+            font-family: inherit;
+            white-space: pre-wrap;
+        }
         </style>
     """, unsafe_allow_html=True)
     
@@ -263,12 +333,6 @@ def main():
         st.session_state.main_process = False
     if 'log_capture' not in st.session_state:
         st.session_state.log_capture = LogCapture()
-    if 'log_counter' not in st.session_state:
-        st.session_state.log_counter = 0
-    if 'show_logs' not in st.session_state:
-        st.session_state.show_logs = False
-    if 'progress_bar' not in st.session_state:
-        st.session_state.progress_bar = None
 
     # Start button
     if not st.session_state.process_running:
@@ -280,33 +344,33 @@ def main():
                 st.session_state.task1_completed = False
                 st.session_state.main_process = run_main_script()
                 st.session_state.log_capture = LogCapture()
-                st.session_state.log_counter = 0
                 st.session_state.log_capture.add_log("Pipeline started - cleaned result folders")
                 rerun_app()
-
-    # Log visibility toggle
-    st.session_state.show_logs = st.checkbox("Show Logs", value=st.session_state.show_logs)
 
     # Process running
     if st.session_state.process_running:
         st.markdown("### Processing Status")
         status_container = st.container()
         progress_container = st.container()
-        log_container = st.container()
+        activity_container = st.container()
         
         with status_container:
             status_text = st.empty()
+            step_text = st.empty()
         
         with progress_container:
-            st.markdown("#### Progress")
-            if st.session_state.progress_bar is None:
-                st.session_state.progress_bar = st.progress(0)
-            progress_bar = st.session_state.progress_bar
+            st.markdown("#### Overall Progress")
+            overall_text = st.empty()
+            overall_progress_bar = st.progress(0)
+            st.markdown("#### Current Step Progress")
+            step_progress_text = st.empty()
+            step_progress_bar = st.progress(0)
+            eta_text = st.empty()
         
-        with log_container:
-            if st.session_state.show_logs:
-                st.markdown("### Real-time Logs")
-                log_placeholder = st.empty()
+        with activity_container:
+            st.markdown("#### Recent activity")
+            st.markdown("_Live log output from pipeline processing. Scroll to review more events._")
+            recent_log_placeholder = st.empty()
         
         max_wait_time = 3600*5  # 1 hour maximum wait time
         start_time = time.time()
@@ -327,12 +391,17 @@ def main():
             # Task 1: MS-DIAL Processing
             has_files, files = check_clean_result_files()
             if not st.session_state.task1_completed:
+                update_overall_progress(overall_text, overall_progress_bar, eta_text, 1, 5, 0.0, "MS-DIAL processing", start_time)
+                step_progress_text.text("MS-DIAL progress — 0/1")
+                step_progress_bar.progress(0)
+
                 if st.session_state.main_process:
                     poll_result = st.session_state.main_process
                     if has_files:
                         log_msg = "Task 1: MS-DIAL main script completed successfully"
                         log_access(log_msg)
                         st.session_state.log_capture.add_log(log_msg)
+                        st.session_state.main_process = None
                     # else:
                     #     log_msg = f"Task 1: MS-DIAL main script failed with return code: {poll_result}"
                     #     log_access(log_msg)
@@ -340,8 +409,6 @@ def main():
                     #     st.error(f"Task 1 failed with error code: {poll_result}")
                     #     st.session_state.process_running = False
                     #     break
-                        
-                        st.session_state.main_process = None
                 
                 # has_files, files = check_clean_result_files()
                 if has_files:
@@ -362,46 +429,55 @@ def main():
                     except Exception as e:
                         st.warning(f"⚠️ Copy after Task 1 failed: {e}")
                         st.session_state.log_capture.add_log(f"ERROR: Copy after Task 1 failed: {e}")
-                    status_text.success("✅ Task 1 completed! Starting Task 2: Chemical Structure Classification")
-                    progress_bar.progress(50)  # Task 1 = 50%
-                    st.session_state.log_capture.add_log("Starting Task 2: Chemical Structure Classification")
+                    status_text.success("✅ Task 1 completed! Copying Task 1 results to final_result_path...")
+                    step_text.info("Task 1 complete")
+                    step_progress_text.text("MS-DIAL completed — 1/1")
+                    step_progress_bar.progress(100)
+                    update_overall_progress(overall_text, overall_progress_bar, eta_text, 1, 5, 1.0, "MS-DIAL complete", start_time)
+                    print("[CMD] Task 1 completed. Copying Task 1 results...")
+                    st.session_state.log_capture.add_log("Task 1 completed: Results copied and Task 2 starting")
+                    update_recent_activity(recent_log_placeholder, st.session_state.log_capture)
                     time.sleep(2)  # Brief pause to show Task 1 completion
                 else:
                     status_text.text("Task 1: Running MS-DIAL - Processing data files...")
-                    progress_bar.progress(25)  # Partial progress for Task 1
+                    step_text.text("Task 1 in progress")
+                    step_progress_text.text("MS-DIAL running — 0/1")
+                    print("[CMD] Task 1: Running MS-DIAL - processing data files...")
+                    step_progress_bar.progress(0)
                     time.sleep(2)
-                    # Update log display if enabled
-                    if st.session_state.show_logs:
-                        current_logs = st.session_state.log_capture.logs
-                        st.session_state.log_counter += 1
-                        log_placeholder.text_area(
-                            "Logs:",
-                            value="\n".join(current_logs[-20:]),
-                            height=300,  # Larger height
-                            disabled=True,
-                            key=f"log_{st.session_state.log_counter}"
-                        )
+                    update_recent_activity(recent_log_placeholder, st.session_state.log_capture)
                     continue
             
             # Task 2: Chemical Structure Classification
             if st.session_state.task1_completed:
                 pipeline = ChemicalAnalysisPipeline(Config())
+                step_names = {
+                    1: "Classification Processing",
+                    2: "Data Merging",
+                    3: "Identifier Conversion",
+                    4: "Final Aggregation"
+                }
                 for step in range(1, 5):
+                    step_name = step_names.get(step, f"Step {step}")
+                    status_text.info(f"Task 2 — Step {step}/4")
+                    step_text.text(step_name)
+                    step_progress_text.text(f"{step_name} — waiting to start")
+                    step_progress_bar.progress(0)
+                    update_overall_progress(overall_text, overall_progress_bar, eta_text, step + 1, 5, 0.0, step_name, start_time)
                     success = run_pipeline_step(
-                        step, pipeline, status_text, st.session_state.log_capture, progress_bar
+                        step,
+                        pipeline,
+                        status_text,
+                        step_text,
+                        st.session_state.log_capture,
+                        step_progress_bar,
+                        overall_text,
+                        overall_progress_bar,
+                        eta_text,
+                        step + 1,
+                        5,
+                        start_time
                     )
-                    
-                    # Update log display if enabled
-                    if st.session_state.show_logs:
-                        current_logs = st.session_state.log_capture.logs
-                        st.session_state.log_counter += 1
-                        log_placeholder.text_area(
-                            "Logs:",
-                            value="\n".join(current_logs[-20:]),
-                            height=300,  # Larger height
-                            disabled=True,
-                            key=f"log_{st.session_state.log_counter}"
-                        )
                     
                     if not success:
                         st.error(f"Task 2 stopped at step {step}")
@@ -424,18 +500,16 @@ def main():
                         st.warning(f"⚠️ Copy after Task 2 step {step} failed: {e}")
                         st.session_state.log_capture.add_log(f"ERROR: Copy after Task 2 step {step} failed: {e}")
                     
+                    update_recent_activity(recent_log_placeholder, st.session_state.log_capture)
                     time.sleep(1)
                 
-                # if st.session_state.process_running:
-                #     st.session_state.process_running = False
-                #     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
-                #     progress_bar.progress(100)  # Full completion
-                #     st.session_state.log_capture.add_log("Pipeline completed successfully")
-                #     break
                 if st.session_state.process_running:
                     st.session_state.process_running = False
                     status_text.success("✅ Pipeline completed! Task 1 and Task 2 finished successfully.")
-                    progress_bar.progress(100)  # Full completion
+                    step_text.success("All steps completed")
+                    overall_progress_bar.progress(100)
+                    step_progress_bar.progress(100)
+                    eta_text.text("✅ Completed")
                     st.session_state.log_capture.add_log("Pipeline completed successfully")
 
                     # New message for Step 3
@@ -448,17 +522,7 @@ def main():
                     break
 
             
-            # Update log display if enabled
-            if st.session_state.show_logs:
-                current_logs = st.session_state.log_capture.logs
-                st.session_state.log_counter += 1
-                log_placeholder.text_area(
-                    "Logs:",
-                    value="\n".join(current_logs[-20:]),
-                    height=300,  # Larger height
-                    disabled=True,
-                    key=f"log_{st.session_state.log_counter}"
-                )
+            update_recent_activity(recent_log_placeholder, st.session_state.log_capture)
             
             time.sleep(2)
         

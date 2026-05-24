@@ -4,6 +4,7 @@ import os
 
 # Đường dẫn file nguồn và thư mục đích
 source_file = os.path.join('data', 'test', 'Pool_ur-5_liu_20251226.txt')
+#source_file = os.path.join('data', 'test', 'Task1_CleanResult_104-2_bp-12_liu_20260107.txt')
 destination_dir = os.path.join('data', 'clean_result')
 
 # Tạo thư mục đích nếu chưa tồn tại

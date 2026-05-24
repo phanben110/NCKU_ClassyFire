@@ -31,7 +31,7 @@ def log_access(message):
 # Create an option menu for the main menu in the sidebar
 st.set_page_config(page_title="ClassyFire", page_icon="app_demo/image/Icon_chemitry.png", layout="wide")
 #st.set_page_config(page_title="Semi-quantitative", page_icon="app_demo/image/Icon_chemitry.png", layout="wide",  theme={"primaryColor": "#4CAF50"})
-st.sidebar.image("app_demo/image/logo_NCKU.jpeg", use_column_width=True)
+st.sidebar.image("app_demo/image/logo_NCKU.jpeg", use_container_width=True)
 
 with st.sidebar:
     selected = option_menu("Main Menu", ["1. Configuration", "2. Processing", "3. Download Result"],
