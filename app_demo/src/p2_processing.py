@@ -87,11 +87,11 @@ def check_clean_result_files():
 
 def run_main_script():
     try:
-        log_access("Starting MS-DIAL main.py script execution")
-        subprocess.run(["python", "main.py"], check=True, text=True)
+        log_access("Starting MS-DIAL msdial_new.py script execution")
+        subprocess.run(["python", "msdial_new.py"], check=True, text=True)
         return True
     except Exception as e:
-        log_access(f"Error running main.py: {str(e)}")
+        log_access(f"Error running msdial_new.py: {str(e)}")
         return False
 
 
@@ -396,7 +396,7 @@ def display_pipeline_info():
     st.sidebar.markdown("### 🔬 Pipeline Tasks")
     st.sidebar.markdown("""
 **Task 1: MS-DIAL Processing**
-- Run main.py, produce .txt files in clean_result
+- Run msdial_new.py, produce .txt files in clean_result
 
 **Task 2: Parallel Classification**
 - Each Task 1 file processed independently
@@ -501,15 +501,36 @@ def main():
         )
 
     def refresh_overall():
-        all_files   = st.session_state.task1_files
-        n           = len(all_files)
-        states      = st.session_state.file_states
-        done_count  = sum(1 for s in states.values() if s['status'] == 'done')
-        fail_count  = sum(1 for s in states.values() if s['status'] == 'failed')
-        finished    = done_count + fail_count
-        pct         = int(finished / n * 100) if n else 0
-        elapsed     = time.time() - start_time
-        eta         = eta_from_done(finished, n, elapsed) if finished > 0 else "estimating…"
+        all_files  = st.session_state.task1_files
+        n          = len(all_files)
+        states     = st.session_state.file_states
+        done_count = sum(1 for s in states.values() if s["status"] == "done")
+        fail_count = sum(1 for s in states.values() if s["status"] == "failed")
+        finished   = done_count + fail_count
+        elapsed    = time.time() - start_time
+
+        # Granular progress: each file has 4 steps, each step reports item-level progress
+        total_units = n * 4
+        done_units  = 0.0
+        for state in states.values():
+            for s in range(1, 5):
+                s_status = state["steps"].get(s, "waiting")
+                if s_status == "done":
+                    done_units += 1.0
+                elif s_status == "active":
+                    prog = state["step_prog"].get(s)
+                    if prog and prog[1] > 0:
+                        done_units += prog[0] / prog[1]
+
+        ratio = done_units / total_units if total_units > 0 else 0.0
+        pct   = int(ratio * 100)
+
+        if ratio > 0.005 and elapsed > 3:
+            remaining = elapsed * (1.0 - ratio) / ratio
+            eta = f"{format_duration(remaining)} remaining"
+        else:
+            eta = "estimating…"
+
         overall_label.text(
             f"Files completed: {finished}/{n}  ({done_count} ✅  {fail_count} ❌)  —  {pct}%"
         )
