@@ -34,8 +34,10 @@ st.set_page_config(page_title="ClassyFire", page_icon="app_demo/image/Icon_chemi
 st.sidebar.image("app_demo/image/logo_NCKU.jpeg", use_container_width=True)
 
 with st.sidebar:
-    selected = option_menu("Main Menu", ["1. Configuration", "2. Processing", "3. Download Result"],
-                           icons=["gear-fill", "cpu-fill", "cloud-arrow-down-fill" ], menu_icon="bars", default_index=0)
+    selected = option_menu("Main Menu", ["1. Configuration", "2. Processing"],
+                           icons=["gear-fill", "cpu-fill" ], menu_icon="bars", default_index=0)
+    # selected = option_menu("Main Menu", ["1. Configuration", "2. Processing", "3. Download Result"],
+                        #    icons=["gear-fill", "cpu-fill", "cloud-arrow-down-fill" ], menu_icon="bars", default_index=0)
 # Based on the selected option, you can display different content in your web application
 # page for select icon https://icons.getbootstrap.com/
 
@@ -53,6 +55,6 @@ if selected == "1. Configuration":
     upload_data()   
 elif selected == "2. Processing":
     main()
-elif selected == "3. Download Result":
-    download_result()
+# elif selected == "3. Download Result":
+#     download_result()
 
