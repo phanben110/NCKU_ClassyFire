@@ -1,6 +1,8 @@
 import json
 import os
 import shutil
+import time
+import errno
 from pathlib import Path
 
 
@@ -27,6 +29,33 @@ def make_unique_target(target: Path) -> Path:
         counter += 1
 
 
+def safe_copy(src: Path, dst: Path, max_retries: int = 5, delay: float = 0.5):
+    """Copy a file with retries on file-in-use / permission errors (e.g. Windows WinError 32).
+
+    Retries with exponential backoff when the OS reports the file is in use.
+    """
+    src_path = Path(src)
+    dst_path = Path(dst)
+    for attempt in range(max_retries):
+        try:
+            shutil.copy2(src_path, dst_path)
+            return
+        except PermissionError as e:
+            winerr = getattr(e, 'winerror', None)
+            errnum = getattr(e, 'errno', None)
+            if winerr == 32 or errnum in (errno.EACCES, errno.EPERM):
+                if attempt < max_retries - 1:
+                    time.sleep(delay * (2 ** attempt))
+                    continue
+            raise
+        except OSError as e:
+            if getattr(e, 'winerror', None) == 32 or getattr(e, 'errno', None) == errno.EACCES:
+                if attempt < max_retries - 1:
+                    time.sleep(delay * (2 ** attempt))
+                    continue
+            raise
+
+
 def copy_file_to_final(src_file: Path, dst_folder: Path, prefix: str, overwrite: bool = True):
     if not src_file.exists() or not src_file.is_file():
         return None
@@ -38,7 +67,7 @@ def copy_file_to_final(src_file: Path, dst_folder: Path, prefix: str, overwrite:
     if dst_path.exists() and not overwrite:
         dst_path = make_unique_target(dst_path)
 
-    shutil.copy2(src_file, dst_path)
+    safe_copy(src_file, dst_path)
     return str(dst_path)
 
 
@@ -62,7 +91,7 @@ def copy_folder_to_final(src_folder: Path, dst_folder: Path, prefix: str, overwr
                     ensure_dir(dst_path.parent)
                     if dst_path.exists() and not overwrite:
                         dst_path = make_unique_target(dst_path)
-                    shutil.copy2(sub_item, dst_path)
+                    safe_copy(sub_item, dst_path)
                     copied_files.append(str(dst_path))
     if copied_files:
         print(f"Copied {len(copied_files)} files from {src_folder} to {dst_folder}")
