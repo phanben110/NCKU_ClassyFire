@@ -10,6 +10,7 @@ from pathlib import Path
 from app_demo.src.core import ChemicalAnalysisPipeline, Config
 import queue
 import sys
+import pandas as pd
 from app_demo.src.title import title_app
 
 
@@ -17,7 +18,8 @@ app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if app_root not in sys.path:
     sys.path.insert(0, app_root)
 
-from copy_results_to_final import copy_results_to_final, copy_folder_results_to_final
+import configs
+from copy_results_to_final import copy_results_to_final, copy_folder_results_to_final, copy_file_to_final
 
 # Configure logging
 logging.basicConfig(
@@ -60,31 +62,116 @@ def clean_result_folders():
     
 #     excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
 #     return len(excel_files) > 0, excel_files
+def _get_expected_task1_count():
+    try:
+        return len(configs.raw_files_to_select or [])
+    except Exception:
+        return 0
+
+
+def _collect_clean_result_files(source_folder):
+    if not os.path.exists(source_folder):
+        return []
+    return sorted([
+        f for f in os.listdir(source_folder)
+        if f.lower().endswith(('.xlsx', '.csv', '.txt'))
+    ])
+
+
+def _select_task1_output_file(source_folder):
+    source_path = Path(source_folder)
+    if not source_path.exists():
+        return None
+
+    raw_names = [raw.lower() for raw in configs.raw_files_to_select or []]
+    candidate_files = sorted(
+        [p for p in source_path.iterdir() if p.is_file() and p.suffix.lower() in ('.xlsx', '.csv', '.txt')],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True
+    )
+
+    for raw_name in raw_names:
+        for file_path in candidate_files:
+            if raw_name in file_path.stem.lower():
+                return file_path
+
+    return candidate_files[0] if candidate_files else None
+
+
+def _read_clean_result_file(path: Path):
+    if path.suffix.lower() == '.xlsx':
+        return pd.read_excel(path, dtype=str)
+    return pd.read_csv(path, sep=None, engine='python', dtype=str)
+
+
+def _merge_clean_result_files(source_folder, merged_folder_name='clean_result_merged', merged_filename='merged_clean_result.txt'):
+    source_path = Path(source_folder)
+    if not source_path.exists():
+        return None
+
+    source_files = sorted(
+        [p for p in source_path.iterdir() if p.is_file() and p.suffix.lower() in ('.xlsx', '.csv', '.txt')],
+        key=lambda p: p.stat().st_mtime
+    )
+    if not source_files:
+        return None
+
+    merged_folder = source_path.parent / merged_folder_name
+    if merged_folder.exists():
+        shutil.rmtree(merged_folder)
+    merged_folder.mkdir(parents=True, exist_ok=True)
+
+    data_frames = []
+    for file_path in source_files:
+        try:
+            df = _read_clean_result_file(file_path)
+            data_frames.append(df)
+        except Exception as e:
+            log_access(f"Failed to read clean_result file {file_path.name}: {e}")
+            continue
+
+    if not data_frames:
+        return None
+
+    merged_df = pd.concat(data_frames, ignore_index=True, sort=False)
+    merged_file_path = merged_folder / merged_filename
+    merged_df.to_csv(merged_file_path, sep='\t', index=False)
+    return merged_file_path
+
+
 def check_clean_result_files():
-    """Check if files exist in data/clean_result folder"""
+    """Check if files exist in data/clean_result folder."""
     config = Config()
     source_folder = config.SOURCE_FOLDER
-    
-    log_access("Waiting 5 seconds before checking clean_result files...")
-    print("⏳ Waiting 5 seconds before checking files...")
-    time.sleep(5)  # Delay 5 giây
+    expected_count = _get_expected_task1_count()
 
     if not os.path.exists(source_folder):
         log_access(f"Folder not found: {source_folder}")
         print(f"❌ Folder not found: {source_folder}")
         return False, []
-    
-    #excel_files = [f for f in os.listdir(source_folder) if f.endswith('.xlsx')]
-    excel_files = [
-    f for f in os.listdir(source_folder)
-    if f.lower().endswith(('.xlsx', '.csv','.txt'))
-    ]
-    file_count = len(excel_files)
 
-    log_access(f"Detected {file_count} Excel file(s) in {source_folder}")
-    print(f"📂 Detected {file_count} Excel file(s) in '{source_folder}'")
+    files = _collect_clean_result_files(source_folder)
+    file_count = len(files)
+    log_access(f"Detected {file_count} Task 1 output file(s) in {source_folder}")
+    print(f"📂 Detected {file_count} Task 1 output file(s) in '{source_folder}'")
 
-    return file_count > 0, excel_files
+    if expected_count > 0:
+        if file_count < expected_count:
+            return False, files
+
+        log_access(f"Expected {expected_count} files for Task 1. Waiting 10 seconds for file writes to complete...")
+        print("⏳ Expected files found. Waiting 10 seconds to ensure all files are written...")
+        time.sleep(10)
+
+        files = _collect_clean_result_files(source_folder)
+        file_count = len(files)
+        log_access(f"Rechecked Task 1 output files after wait: {file_count} files present")
+        print(f"📂 After waiting, {file_count} files are present in '{source_folder}'")
+
+        if file_count < expected_count:
+            return False, files
+
+    return file_count > 0, files
 
 
 # def run_main_script():
@@ -113,8 +200,8 @@ def run_main_script():
     try:
         log_access("Starting MS-DIAL main.py script execution")
         subprocess.run(
-            #["python", "main.py"],
-            ["python","msdial_new.py"],
+            ["python", "main.py"],
+            #["python","msdial_new.py"],
             check=True,         # nếu main.py trả về lỗi (exit code != 0) sẽ raise Exception
             text=True
         )
@@ -164,12 +251,33 @@ def estimate_time_remaining(start_time, percent):
     return f"{format_duration(remaining)} remaining"
 
 
-def update_overall_progress(overall_text, overall_progress_bar, eta_text, step_index, total_steps, ratio, description, start_time):
+def estimate_time_remaining_by_average(done, total, elapsed_time):
+    """
+    Calculate remaining time based on average time per item.
+    If 10 items took 50 seconds, average = 5s/item.
+    If 100 items total, remaining = 5 * (100-10) = 450 seconds.
+    """
+    if total <= 0 or done <= 0 or done >= total or elapsed_time is None:
+        return "Estimating..."
+    if elapsed_time < 1.0 or done < 2:
+        return "Estimating..."
+    avg_time_per_item = elapsed_time / done
+    remaining_seconds = avg_time_per_item * (total - done)
+    result = f"{format_duration(remaining_seconds)} remaining"
+    # DEBUG: Log actual calculation
+    print(f"[ETA] {done}/{total} | elapsed={elapsed_time:.1f}s | avg={avg_time_per_item:.2f}s/item | remaining={remaining_seconds:.1f}s → {result}")
+    return result
+
+
+def update_overall_progress(overall_text, overall_progress_bar, eta_text, step_index, total_steps, ratio, description, start_time, eta_text_str=None):
     ratio = min(max(ratio, 0.0), 1.0)
     percent = int(((step_index - 1) + ratio) / total_steps * 100)
     overall_progress_bar.progress(percent)
     overall_text.text(f"Overall progress: {step_index}/{total_steps} — {description} ({percent}%)")
-    eta_text.text(f"⏳ {estimate_time_remaining(start_time, percent)}")
+    if eta_text_str:
+        eta_text.text(f"⏳ {eta_text_str}")
+    else:
+        eta_text.text(f"⏳ {estimate_time_remaining(start_time, percent)}")
     return percent
 
 
@@ -197,15 +305,42 @@ def run_pipeline_step(step_number, pipeline, status_text, step_text, log_capture
     log_capture.add_log(f"Starting Task 2, Step {step_number}: {step_name}")
 
     current_progress = {'done': 0, 'total': 0}
+    step_start_time = time.time()
+    first_callback_time = None
 
     def progress_callback(done, total, message=None):
+        nonlocal first_callback_time
+        
         current_progress['done'] = done
         current_progress['total'] = total
         percent = int(done / total * 100) if total else 0
         step_progress_bar.progress(percent)
         label = message or f"{done}/{total}"
         step_text.text(f"{step_name} — {label}")
-        update_overall_progress(overall_text, overall_progress_bar, overall_eta_text, overall_step_index, total_steps, done / total if total else 0.0, step_name, start_time)
+
+        # Track time from first progress update, not from step start
+        if first_callback_time is None:
+            first_callback_time = time.time()
+        
+        elapsed = time.time() - first_callback_time
+        avg_per_item = elapsed / done if done > 0 else 0
+        eta_str = estimate_time_remaining_by_average(done, total, elapsed)
+        
+        # DEBUG: Show calculation on UI
+        debug_info = f"DEBUG: {done}/{total} | elapsed={elapsed:.1f}s | avg={avg_per_item:.2f}s/item → {eta_str}"
+        print(debug_info)
+        
+        update_overall_progress(
+            overall_text,
+            overall_progress_bar,
+            overall_eta_text,
+            overall_step_index,
+            total_steps,
+            done / total if total else 0.0,
+            step_name,
+            start_time,
+            eta_text_str=eta_str
+        )
 
     try:
         pipeline.run_step(step_number, progress_callback=progress_callback)
@@ -402,40 +537,44 @@ def main():
                         log_access(log_msg)
                         st.session_state.log_capture.add_log(log_msg)
                         st.session_state.main_process = None
-                    # else:
-                    #     log_msg = f"Task 1: MS-DIAL main script failed with return code: {poll_result}"
-                    #     log_access(log_msg)
-                    #     st.session_state.log_capture.add_log(f"ERROR: {log_msg}")
-                    #     st.error(f"Task 1 failed with error code: {poll_result}")
-                    #     st.session_state.process_running = False
-                    #     break
-                
-                # has_files, files = check_clean_result_files()
+                    
                 if has_files:
                     st.session_state.task1_completed = True
                     log_msg = f"Task 1 completed: Files detected in clean_result folder: {len(files)} files"
                     log_access(log_msg)
                     st.session_state.log_capture.add_log(log_msg)
-                    status_text.success("✅ Task 1 completed! Copying Task 1 results to final_result_path...")
+                    status_text.success("✅ Task 1 completed! Merging Task 1 outputs into one file...")
                     try:
                         config = Config()
-                        copy_result = copy_folder_results_to_final(
-                            'Task1_CleanResult',
-                            Path(config.SOURCE_FOLDER),
+                        merged_file = _merge_clean_result_files(config.SOURCE_FOLDER)
+                        if merged_file is None:
+                            raise FileNotFoundError("Could not merge Task 1 output files")
+
+                        st.session_state.task1_merged_folder = str(merged_file.parent)
+                        st.session_state.task1_merged_file = str(merged_file)
+
+                        dst_root = Path(configs.final_result_path)
+                        dst_root.mkdir(parents=True, exist_ok=True)
+                        copied_path = copy_file_to_final(
+                            merged_file,
+                            dst_root,
+                            'Task1_MergedCleanResult',
                             overwrite=True
                         )
-                        status_text.info(f"Copied {copy_result['copied_count']} files to: {copy_result['dst_root']}")
-                        st.session_state.log_capture.add_log(f"Copied results after Task 1 to {copy_result['dst_root']}")
+                        if copied_path:
+                            status_text.info(f"Copied merged file to: {dst_root}")
+                            st.session_state.log_capture.add_log(f"Copied merged Task 1 output file {merged_file.name} to {dst_root}")
+                        else:
+                            raise RuntimeError("Failed to copy merged Task 1 output file")
                     except Exception as e:
-                        st.warning(f"⚠️ Copy after Task 1 failed: {e}")
-                        st.session_state.log_capture.add_log(f"ERROR: Copy after Task 1 failed: {e}")
-                    status_text.success("✅ Task 1 completed! Copying Task 1 results to final_result_path...")
+                        st.warning(f"⚠️ Merge or copy after Task 1 failed: {e}")
+                        st.session_state.log_capture.add_log(f"ERROR: Merge or copy after Task 1 failed: {e}")
                     step_text.info("Task 1 complete")
                     step_progress_text.text("MS-DIAL completed — 1/1")
                     step_progress_bar.progress(100)
                     update_overall_progress(overall_text, overall_progress_bar, eta_text, 1, 5, 1.0, "MS-DIAL complete", start_time)
-                    print("[CMD] Task 1 completed. Copying Task 1 results...")
-                    st.session_state.log_capture.add_log("Task 1 completed: Results copied and Task 2 starting")
+                    print("[CMD] Task 1 completed. Merged Task 1 outputs and copied merged file...")
+                    st.session_state.log_capture.add_log("Task 1 completed: Merged output file copied and Task 2 starting")
                     update_recent_activity(recent_log_placeholder, st.session_state.log_capture)
                     time.sleep(2)  # Brief pause to show Task 1 completion
                 else:
@@ -451,6 +590,8 @@ def main():
             # Task 2: Chemical Structure Classification
             if st.session_state.task1_completed:
                 pipeline = ChemicalAnalysisPipeline(Config())
+                if 'task1_merged_folder' in st.session_state and st.session_state.task1_merged_folder:
+                    pipeline.config.SOURCE_FOLDER = st.session_state.task1_merged_folder
                 step_names = {
                     1: "Classification Processing",
                     2: "Data Merging",
